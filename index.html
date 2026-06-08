@@ -75,19 +75,19 @@ h1,h2,h3{font-family:'Noto Serif TC',serif}
 .app{display:flex;flex-direction:column;min-height:100vh}
 
 /* HEADER */
-.header{background:var(--bg2);border-bottom:1px solid var(--border);padding:0 2rem;display:flex;align-items:center;justify-content:space-between;height:64px;position:sticky;top:0;z-index:100}
-.logo{display:flex;align-items:center;gap:12px;cursor:pointer;text-decoration:none}
-.logo-img{height:38px;width:auto;object-fit:contain}
-.logo-divider{width:1px;height:28px;background:var(--border2)}
-.logo-text{font-family:'Noto Serif TC',serif;font-size:1rem;font-weight:700;color:var(--gold2);letter-spacing:2px}
-.logo-sub{font-size:10px;color:var(--text3);letter-spacing:1px;margin-top:1px}
-.nav{display:flex;gap:8px;align-items:center}
-.nav-btn{background:none;border:none;color:var(--text2);cursor:pointer;padding:6px 14px;border-radius:var(--radius);font-size:13px;font-family:'Noto Sans TC',sans-serif;transition:all .2s;display:flex;align-items:center;gap:6px}
+.header{background:var(--bg2);border-bottom:1px solid var(--border);padding:0 1.5rem;display:flex;align-items:center;gap:1rem;height:56px;position:sticky;top:0;z-index:100}
+.logo{display:flex;align-items:center;gap:8px;cursor:pointer;text-decoration:none;flex-shrink:0}
+.logo-img{height:32px;width:auto;object-fit:contain}
+.logo-divider{width:1px;height:22px;background:var(--border2)}
+.logo-text{font-family:'Noto Serif TC',serif;font-size:.88rem;font-weight:700;color:var(--gold2);letter-spacing:1px;white-space:nowrap}
+.logo-sub{font-size:9px;color:var(--text3);letter-spacing:.5px;margin-top:1px}
+.nav{display:flex;gap:2px;align-items:center;flex:1;justify-content:center}
+.nav-btn{background:none;border:none;color:var(--text2);cursor:pointer;padding:5px 12px;border-radius:var(--radius);font-size:13px;font-family:'Noto Sans TC',sans-serif;transition:all .2s;display:flex;align-items:center;gap:5px;white-space:nowrap}
 .nav-btn:hover{background:var(--bg3);color:var(--text)}
 .nav-btn.active{background:var(--bg3);color:var(--gold2)}
 .pending-badge{background:var(--gold);color:#0f0e0d;font-size:10px;padding:1px 5px;border-radius:8px;margin-left:2px;font-weight:700}
-.user-area{display:flex;align-items:center;gap:10px}
-.avatar{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,var(--gold),#8b6914);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#0f0e0d;cursor:pointer;border:2px solid var(--gold)}
+.user-area{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.avatar{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--gold),#8b6914);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#0f0e0d;cursor:pointer;border:2px solid var(--gold)}
 .btn{padding:7px 18px;border-radius:var(--radius);font-size:13px;font-family:'Noto Sans TC',sans-serif;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:6px;border:none}
 .btn-primary{background:var(--gold);color:#0f0e0d;font-weight:700}
 .btn-primary:hover{background:var(--gold2)}
@@ -307,9 +307,6 @@ h1,h2,h3{font-family:'Noto Serif TC',serif}
 .login-logo{text-align:center;margin-bottom:1.5rem}
 .login-logo h2{font-size:1.2rem;color:var(--gold2);letter-spacing:2px}
 .login-logo p{font-size:.8rem;color:var(--text3);margin-top:4px}
-.login-tabs{display:flex;gap:4px;background:var(--bg3);border-radius:var(--radius);padding:3px;margin-bottom:1.5rem}
-.login-tab{flex:1;padding:7px;border-radius:6px;font-size:13px;text-align:center;cursor:pointer;border:none;background:transparent;color:var(--text3);font-family:'Noto Sans TC',sans-serif;transition:all .2s}
-.login-tab.active{background:var(--gold);color:#0f0e0d;font-weight:700}
 
 /* PROFILE DROPDOWN */
 .dropdown{position:relative}
@@ -616,37 +613,18 @@ h1,h2,h3{font-family:'Noto Serif TC',serif}
         <h2>提示詞共學平台</h2>
         <p>館員專屬 · 知識共享</p>
       </div>
-      <div class="login-tabs">
-        <button class="login-tab active" id="tab-login" onclick="switchLoginTab('login')">登入</button>
-        <button class="login-tab" id="tab-register" onclick="switchLoginTab('register')">註冊</button>
+      <div class="form-group">
+        <label class="form-label">電子郵件</label>
+        <input type="email" class="form-input" id="loginEmail" placeholder="yourname@nmst.gov.tw" autocomplete="email">
       </div>
-      <div id="loginForm">
-        <div class="form-group">
-          <label class="form-label">電子郵件</label>
-          <input type="email" class="form-input" id="loginEmail" placeholder="yourname@nmst.gov.tw">
-        </div>
-        <div class="form-group">
-          <label class="form-label">密碼</label>
-          <input type="password" class="form-input" id="loginPwd" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()">
-        </div>
-        <button class="btn btn-primary" style="width:100%;justify-content:center;padding:10px" onclick="doLogin()"><i class="fas fa-right-to-bracket"></i>登入</button>
+      <div class="form-group">
+        <label class="form-label">密碼</label>
+        <input type="password" class="form-input" id="loginPwd" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()" autocomplete="current-password">
       </div>
-      <div id="registerForm" style="display:none">
-        <div class="form-group">
-          <label class="form-label">姓名</label>
-          <input type="text" class="form-input" id="regName" placeholder="王小明">
-        </div>
-        <div class="form-group">
-          <label class="form-label">電子郵件</label>
-          <input type="email" class="form-input" id="regEmail" placeholder="yourname@nmst.gov.tw">
-        </div>
-        <div class="form-group">
-          <label class="form-label">密碼（至少 6 位）</label>
-          <input type="password" class="form-input" id="regPwd" placeholder="••••••••">
-        </div>
-        <button class="btn btn-primary" style="width:100%;justify-content:center;padding:10px" onclick="doRegister()"><i class="fas fa-user-plus"></i>建立帳號</button>
-      </div>
-      <p style="text-align:center;margin-top:1rem;font-size:.78rem;color:var(--text3)">本平台僅供館內人員使用</p>
+      <button class="btn btn-primary" style="width:100%;justify-content:center;padding:10px;margin-bottom:.8rem" onclick="doLogin()">
+        <i class="fas fa-right-to-bracket"></i>登入
+      </button>
+      <p style="text-align:center;font-size:.78rem;color:var(--text3)">本平台僅供館內人員使用</p>
     </div>
   </div>
 
@@ -716,11 +694,53 @@ let allPosts = [];
 // AUTH
 // =============================================
 async function initAuth() {
-  const { data: { session } } = await db.auth.getSession();
-  if (session) await onLogin(session.user);
+  // 處理驗證信回調（URL 帶有 #access_token 或 ?code= 時）
+  const { data: { session: cbSession }, error: cbError } = await db.auth.getSession();
+
+  // Supabase v2：偵測 PKCE code exchange（新版驗證流程）
+  const urlParams = new URLSearchParams(window.location.search);
+  const hashParams = new URLSearchParams(window.location.hash.replace('#', ''));
+  const hasCode = urlParams.has('code');
+  const hasToken = hashParams.has('access_token');
+
+  if (hasCode || hasToken) {
+    // 顯示驗證中提示
+    document.getElementById('app').innerHTML = `
+      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;gap:1rem;background:var(--bg);color:var(--text)">
+        <i class="fas fa-spinner fa-spin" style="font-size:2rem;color:var(--gold)"></i>
+        <p style="font-size:1rem">正在完成帳號驗證...</p>
+      </div>`;
+
+    // exchangeCodeForSession 會自動從 URL 取得 code 並換成 session
+    const { data, error } = await db.auth.exchangeCodeForSession(window.location.href);
+    if (error) {
+      document.getElementById('app').innerHTML = `
+        <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;gap:1rem;background:var(--bg);color:var(--text)">
+          <i class="fas fa-circle-xmark" style="font-size:2rem;color:#e74c3c"></i>
+          <p style="font-size:1rem;color:#e74c3c">驗證失敗：${error.message}</p>
+          <button class="btn btn-outline" onclick="location.href=location.pathname">返回首頁</button>
+        </div>`;
+      return;
+    }
+    // 清除 URL 參數，避免重複處理
+    window.history.replaceState({}, '', window.location.pathname);
+    // 重新載入頁面讓 app 正常初始化
+    location.reload();
+    return;
+  }
+
+  if (cbSession) await onLogin(cbSession.user);
+
   db.auth.onAuthStateChange(async (event, session) => {
     if (event === 'SIGNED_IN') await onLogin(session.user);
     if (event === 'SIGNED_OUT') onLogout();
+    if (event === 'USER_UPDATED') {
+      // 驗證完成後觸發
+      if (session) {
+        toast('🎉 帳號驗證成功！歡迎加入', 'success');
+        await onLogin(session.user);
+      }
+    }
   });
 }
 
@@ -735,7 +755,7 @@ async function onLogin(user) {
   likedPostIds = new Set((likes || []).map(l => l.post_id));
   bookmarkedPostIds = new Set((bkms || []).map(b => b.post_id));
   updateUserUI();
-  loadStats();
+  loadPosts();
 }
 
 function onLogout() {
@@ -790,16 +810,7 @@ async function doLogin() {
   nav('home');
 }
 
-async function doRegister() {
-  const name = document.getElementById('regName').value.trim();
-  const email = document.getElementById('regEmail').value.trim();
-  const pwd = document.getElementById('regPwd').value;
-  if (!name || !email || !pwd) { toast('請填寫所有欄位', 'error'); return; }
-  if (pwd.length < 6) { toast('密碼至少 6 位', 'error'); return; }
-  const { error } = await db.auth.signUp({ email, password: pwd, options: { data: { name } } });
-  if (error) { toast(error.message || '註冊失敗', 'error'); return; }
-  toast('註冊成功！請確認您的電子郵件', 'success');
-}
+// 已移除註冊功能，改由管理員統一建立帳號
 
 async function doLogout() {
   await db.auth.signOut();
@@ -807,12 +818,7 @@ async function doLogout() {
   toast('已成功登出', 'info');
 }
 
-function switchLoginTab(tab) {
-  document.getElementById('loginForm').style.display = tab === 'login' ? '' : 'none';
-  document.getElementById('registerForm').style.display = tab === 'register' ? '' : 'none';
-  document.getElementById('tab-login').classList.toggle('active', tab === 'login');
-  document.getElementById('tab-register').classList.toggle('active', tab === 'register');
-}
+
 
 // =============================================
 // NAVIGATION
@@ -839,7 +845,7 @@ async function loadPosts() {
   const grid = document.getElementById('cardsGrid');
   grid.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i>載入中...</div>';
   let q = db.from('posts').select('*, profiles(name)').eq('status', 'approved');
-  if (currentTag !== '全部') q = q.or(`category.eq.${currentTag},tags.cs.{"${currentTag}"}`);
+  if (currentTag !== '全部') q = q.contains('tags', [currentTag]);
   if (currentSort === 'views')     q = q.order('view_count',     { ascending: false });
   else if (currentSort === 'likes')     q = q.order('like_count',     { ascending: false });
   else if (currentSort === 'bookmarks') q = q.order('bookmark_count', { ascending: false });
@@ -872,7 +878,7 @@ function renderCards() {
       ${p.view_count > 300 ? '<div class="hot-badge">🔥 HOT</div>' : daysAgo < 7 ? '<div class="new-badge">✨ NEW</div>' : ''}
       <div class="card-tags">
         <span class="tag ai">${p.tool || 'AI'}</span>
-        <span class="tag">${p.category || '其他'}</span>
+
         ${(p.tags || []).slice(0, 2).map(t => `<span class="tag">${t}</span>`).join('')}
       </div>
       <div class="card-title">${p.title}</div>
@@ -1241,12 +1247,14 @@ async function submitPost() {
   document.getElementById('submitBtn').disabled = true;
   document.getElementById('submitBtn').innerHTML = '<i class="fas fa-spinner fa-spin"></i>提交中...';
 
+  const selectedCategory = document.getElementById('postCategory').value;
+  const allTags = [...new Set([selectedCategory, ...uploadTags])];
+
   const payload = {
     user_id: currentUser.id,
     title,
     tool: getSelectedTool(),
-    category: document.getElementById('postCategory').value,
-    tags: uploadTags,
+    tags: allTags,
     prompt,
     result_text: document.getElementById('resultEditor').innerText.trim() || null,
     status: 'pending',
