@@ -10,6 +10,7 @@
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 :root{
+  --fs:1rem;
   --bg:#0f0e0d;--bg2:#1a1916;--bg3:#252320;--bg4:#2e2c29;
   --gold:#c9a84c;--gold2:#e8c97a;--gold3:#f5e4b0;
   --text:#f0ede6;--text2:#b8b4aa;--text3:#7a7670;
@@ -17,7 +18,7 @@
   --red:#c0392b;--green:#27ae60;--blue:#2980b9;
   --radius:8px;--radius2:14px;
 }
-body{font-family:'Noto Sans TC',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+body{font-family:'Noto Sans TC',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;font-size:var(--fs)}
 /* ── 淺色模式 ── */
 [data-theme=light]{
   --bg:#f5f2ec;--bg2:#ffffff;--bg3:#f0ece3;--bg4:#e5dfd3;
@@ -379,12 +380,12 @@ h1,h2,h3{font-family:'Noto Serif TC',serif}
 <!-- HEADER -->
 <header class="header">
   <div class="logo" onclick="nav('home')">
-    <img class="logo-img" src="img/logo.png" alt="NMST" onerror="this.style.display='none';document.getElementById('logo-fallback').style.display='flex'">
+    <img class="logo-img" src="img/logo.png" alt="NMMST" onerror="this.style.display='none';document.getElementById('logo-fallback').style.display='flex'">
     <div id="logo-fallback" style="display:none;width:36px;height:36px;background:linear-gradient(135deg,var(--gold),var(--gold2));border-radius:8px;align-items:center;justify-content:center;font-size:18px;color:#0f0e0d;flex-shrink:0"><i class="fas fa-landmark"></i></div>
     <div class="logo-divider"></div>
     <div class="logo-text-wrap">
       <div class="logo-text">提示詞共學平台</div>
-      <div class="logo-sub">NMST · AI PROMPT</div>
+      <div class="logo-sub">NMMST · AI PROMPT</div>
     </div>
   </div>
   <nav class="nav" id="mainNav">
@@ -394,6 +395,11 @@ h1,h2,h3{font-family:'Noto Serif TC',serif}
   </nav>
   <div class="user-area" id="userArea">
     <button class="btn btn-outline" onclick="nav('login')"><i class="fas fa-right-to-bracket"></i>登入</button>
+  </div>
+  <div class="font-size-picker" title="字型大小">
+    <button class="fs-btn fs-s" onclick="setFontSize('s')" id="fsS" title="小">A</button>
+    <button class="fs-btn fs-m active" onclick="setFontSize('m')" id="fsM" title="中">A</button>
+    <button class="fs-btn fs-l" onclick="setFontSize('l')" id="fsL" title="大">A</button>
   </div>
   <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" title="切換深/淺色模式" style="flex-shrink:0">
     <i class="fas fa-moon" id="themeIcon"></i>
@@ -625,7 +631,7 @@ h1,h2,h3{font-family:'Noto Serif TC',serif}
       </div>
       <div class="form-group">
         <label class="form-label">電子郵件</label>
-        <input type="email" class="form-input" id="loginEmail" placeholder="yourname@nmst.gov.tw" autocomplete="email">
+        <input type="email" class="form-input" id="loginEmail" placeholder="yourname@nmmst.gov.tw" autocomplete="email">
       </div>
       <div class="form-group">
         <label class="form-label">密碼</label>
@@ -900,7 +906,7 @@ function renderCards() {
     <div class="card" onclick="openPost('${p.id}')">
       ${p.view_count > 300 ? '<div class="hot-badge">🔥 HOT</div>' : daysAgo < 7 ? '<div class="new-badge">✨ NEW</div>' : ''}
       <div class="card-tags">
-        <span class="tag ai">${p.tool || 'AI'}</span>
+        ${p.tool ? `<span class="tag ai">${p.tool}</span>` : ''}
 
         ${(p.tags || []).slice(0, 2).map(t => `<span class="tag">${t}</span>`).join('')}
       </div>
@@ -950,7 +956,7 @@ async function openPost(id) {
   document.getElementById('modalTitle').textContent = p.title;
   document.getElementById('modalBody').innerHTML = `
     <div style="display:flex;gap:8px;margin-bottom:1rem;flex-wrap:wrap;align-items:center">
-      <span class="tag ai">${p.tool || 'AI'}</span>
+      ${p.tool ? `<span class="tag ai">${p.tool}</span>` : ''}
       <span class="tag">${p.category || ''}</span>
       ${(p.tags || []).map(t => `<span class="tag">${t}</span>`).join('')}
       <span style="margin-left:auto;font-size:12px;color:var(--text3)">${new Date(p.created_at).toLocaleDateString('zh-TW')} · ${name}</span>
@@ -1502,7 +1508,7 @@ async function renderProfile() {
       : `<div class="cards-grid">${posts.map(p => `
         <div class="card" onclick="openPost('${p.id}')">
           <div class="card-tags">
-            <span class="tag ai">${p.tool || 'AI'}</span>
+            ${p.tool ? `<span class="tag ai">${p.tool}</span>` : ''}
             <span class="tag">${p.category || ''}</span>
             <span class="status-badge ${p.status === 'pending' ? 'status-pending' : p.status === 'approved' ? 'status-approved' : 'status-rejected'}" style="margin-left:auto">${p.status === 'pending' ? '審核中' : p.status === 'approved' ? '已上架' : '已拒絕'}</span>
           </div>
@@ -1710,6 +1716,24 @@ function getSelectedTool() {
 }
 
 // =============================================
+// FONT SIZE
+// =============================================
+const FS_MAP = { s: '0.875rem', m: '1rem', l: '1.175rem' };
+
+function setFontSize(size) {
+  document.documentElement.style.setProperty('--fs', FS_MAP[size]);
+  localStorage.setItem('fontSize', size);
+  ['s','m','l'].forEach(s => {
+    document.getElementById('fs' + s.toUpperCase())?.classList.toggle('active', s === size);
+  });
+}
+
+function initFontSize() {
+  const saved = localStorage.getItem('fontSize') || 'm';
+  setFontSize(saved);
+}
+
+// =============================================
 // THEME TOGGLE
 // =============================================
 function toggleTheme() {
@@ -1755,6 +1779,7 @@ window.addEventListener('scroll', () => {
 
 document.addEventListener('DOMContentLoaded', async () => {
   initTheme();
+  initFontSize();
   await initAuth();
   loadPosts();
 });
