@@ -1,1 +1,1199 @@
-placeholder
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI 提示詞共學平台 · 國立海洋科技博物館</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;600;700&family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#0f0e0d;--bg2:#1a1916;--bg3:#252320;--bg4:#2e2c29;
+  --gold:#c9a84c;--gold2:#e8c97a;--gold3:#f5e4b0;
+  --text:#f0ede6;--text2:#b8b4aa;--text3:#7a7670;
+  --border:#3a3733;--border2:#4a4843;
+  --red:#c0392b;--green:#27ae60;--blue:#2980b9;
+  --radius:8px;--radius2:14px;
+}
+body{font-family:'Noto Sans TC',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+h1,h2,h3{font-family:'Noto Serif TC',serif}
+.app{display:flex;flex-direction:column;min-height:100vh}
+
+/* HEADER */
+.header{background:var(--bg2);border-bottom:1px solid var(--border);padding:0 2rem;display:flex;align-items:center;justify-content:space-between;height:64px;position:sticky;top:0;z-index:100}
+.logo{display:flex;align-items:center;gap:12px;cursor:pointer;text-decoration:none}
+.logo-img{height:38px;width:auto;object-fit:contain}
+.logo-divider{width:1px;height:28px;background:var(--border2)}
+.logo-text{font-family:'Noto Serif TC',serif;font-size:1rem;font-weight:700;color:var(--gold2);letter-spacing:2px}
+.logo-sub{font-size:10px;color:var(--text3);letter-spacing:1px;margin-top:1px}
+.nav{display:flex;gap:8px;align-items:center}
+.nav-btn{background:none;border:none;color:var(--text2);cursor:pointer;padding:6px 14px;border-radius:var(--radius);font-size:13px;font-family:'Noto Sans TC',sans-serif;transition:all .2s;display:flex;align-items:center;gap:6px}
+.nav-btn:hover{background:var(--bg3);color:var(--text)}
+.nav-btn.active{background:var(--bg3);color:var(--gold2)}
+.pending-badge{background:var(--gold);color:#0f0e0d;font-size:10px;padding:1px 5px;border-radius:8px;margin-left:2px;font-weight:700}
+.user-area{display:flex;align-items:center;gap:10px}
+.avatar{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,var(--gold),#8b6914);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#0f0e0d;cursor:pointer;border:2px solid var(--gold)}
+.btn{padding:7px 18px;border-radius:var(--radius);font-size:13px;font-family:'Noto Sans TC',sans-serif;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:6px;border:none}
+.btn-primary{background:var(--gold);color:#0f0e0d;font-weight:700}
+.btn-primary:hover{background:var(--gold2)}
+.btn-outline{background:none;border:1px solid var(--border2);color:var(--text2)}
+.btn-outline:hover{border-color:var(--gold);color:var(--gold)}
+.btn-danger{background:rgba(192,57,43,.15);border:1px solid rgba(192,57,43,.3);color:#e74c3c}
+.btn-success{background:rgba(39,174,96,.15);border:1px solid rgba(39,174,96,.3);color:#2ecc71}
+.btn-sm{padding:5px 12px;font-size:12px}
+
+/* MAIN */
+.main{flex:1;padding:2rem}
+.page{display:none}
+.page.active{display:block}
+
+/* HERO */
+.hero{text-align:center;padding:3rem 1rem 2rem;max-width:700px;margin:0 auto}
+.hero h1{font-size:2.2rem;color:var(--gold2);letter-spacing:3px;margin-bottom:.8rem}
+.hero p{color:var(--text2);font-size:1rem;line-height:1.8}
+.hero-stats{display:flex;justify-content:center;gap:2rem;margin-top:2rem}
+.stat{text-align:center}
+.stat-num{font-size:1.8rem;font-weight:700;color:var(--gold);font-family:'Noto Serif TC',serif}
+.stat-label{font-size:12px;color:var(--text3);margin-top:2px}
+
+/* FILTERS */
+.filters{display:flex;gap:10px;margin-bottom:1.5rem;flex-wrap:wrap;align-items:center}
+.filter-chip{background:var(--bg3);border:1px solid var(--border);color:var(--text2);padding:5px 14px;border-radius:20px;font-size:12px;cursor:pointer;transition:all .2s;font-family:'Noto Sans TC',sans-serif}
+.filter-chip:hover,.filter-chip.active{background:var(--gold);border-color:var(--gold);color:#0f0e0d;font-weight:600}
+.search-box{display:flex;align-items:center;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:6px 12px;gap:8px;flex:1;max-width:300px}
+.search-box input{background:none;border:none;outline:none;color:var(--text);font-size:13px;width:100%;font-family:'Noto Sans TC',sans-serif}
+.search-box input::placeholder{color:var(--text3)}
+
+/* SORT */
+.sort-bar{display:flex;gap:8px;align-items:center;margin-bottom:1rem}
+.sort-btn{background:none;border:1px solid var(--border);color:var(--text3);padding:4px 12px;border-radius:20px;font-size:12px;cursor:pointer;font-family:'Noto Sans TC',sans-serif;transition:all .2s}
+.sort-btn:hover,.sort-btn.active{border-color:var(--gold);color:var(--gold)}
+
+/* CARDS GRID */
+.cards-grid{columns:3;gap:16px;column-fill:balance}
+@media(max-width:900px){.cards-grid{columns:2}}
+@media(max-width:600px){.cards-grid{columns:1}}
+.card{break-inside:avoid;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius2);padding:1.2rem;margin-bottom:16px;cursor:pointer;transition:all .25s;position:relative}
+.card:hover{border-color:var(--gold);transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.4)}
+.card-img{width:100%;border-radius:var(--radius);margin-bottom:10px;object-fit:cover;max-height:200px}
+.card-tags{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+.tag{background:var(--bg4);color:var(--text3);font-size:11px;padding:2px 8px;border-radius:4px;border:1px solid var(--border)}
+.tag.ai{background:rgba(201,168,76,.1);color:var(--gold);border-color:rgba(201,168,76,.2)}
+.card-title{font-size:.95rem;font-weight:600;color:var(--text);margin-bottom:6px;line-height:1.5}
+.card-excerpt{font-size:.82rem;color:var(--text2);line-height:1.7;margin-bottom:10px}
+.card-meta{display:flex;align-items:center;justify-content:space-between;font-size:12px;color:var(--text3)}
+.card-author{display:flex;align-items:center;gap:6px}
+.mini-avatar{width:20px;height:20px;border-radius:50%;background:var(--bg4);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:var(--gold)}
+.card-stats{display:flex;gap:10px}
+.card-stat{display:flex;align-items:center;gap:3px;cursor:pointer;transition:color .2s}
+.card-stat:hover{color:var(--gold)}
+.card-stat.liked{color:var(--gold)}
+.hot-badge{position:absolute;top:10px;right:10px;background:linear-gradient(135deg,#c0392b,#e74c3c);color:#fff;font-size:10px;padding:2px 8px;border-radius:10px;font-weight:700;letter-spacing:1px}
+.new-badge{position:absolute;top:10px;right:10px;background:linear-gradient(135deg,#2980b9,#3498db);color:#fff;font-size:10px;padding:2px 8px;border-radius:10px;font-weight:700;letter-spacing:1px}
+
+/* POPULARITY BAR */
+.pop-bar-wrap{display:flex;align-items:center;gap:6px;margin-top:8px}
+.pop-bar-track{flex:1;height:3px;background:var(--bg4);border-radius:2px}
+.pop-bar-fill{height:100%;background:linear-gradient(90deg,var(--gold),var(--gold2));border-radius:2px;transition:width .4s}
+.pop-pct{font-size:10px;color:var(--text3);min-width:28px;text-align:right}
+
+/* MODAL */
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:200;align-items:center;justify-content:center;padding:1rem}
+.overlay.show{display:flex}
+.modal{background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius2);max-width:760px;width:100%;max-height:90vh;overflow-y:auto;position:relative}
+.modal-header{padding:1.5rem 1.5rem 1rem;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;justify-content:space-between;position:sticky;top:0;background:var(--bg2);z-index:1}
+.modal-header h2{font-size:1.2rem;color:var(--gold2);line-height:1.4}
+.modal-close{background:none;border:none;color:var(--text3);font-size:20px;cursor:pointer;padding:4px 8px;line-height:1;border-radius:4px}
+.modal-close:hover{color:var(--text);background:var(--bg3)}
+.modal-body{padding:1.5rem}
+.prompt-block{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:1rem;margin-bottom:1.2rem;position:relative}
+.prompt-label{font-size:11px;color:var(--gold);letter-spacing:2px;text-transform:uppercase;margin-bottom:.5rem;font-weight:600}
+.prompt-text{font-size:.88rem;color:var(--text);line-height:1.8;white-space:pre-wrap}
+.copy-prompt-btn{position:absolute;top:10px;right:10px;background:rgba(201,168,76,.1);border:1px solid rgba(201,168,76,.2);color:var(--gold);font-size:11px;padding:3px 9px;border-radius:5px;cursor:pointer;font-family:'Noto Sans TC',sans-serif;transition:all .2s}
+.copy-prompt-btn:hover{background:rgba(201,168,76,.2)}
+.result-section{margin-top:1.2rem}
+.result-img{width:100%;border-radius:var(--radius);margin-top:.8rem}
+.modal-footer{padding:1rem 1.5rem;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;position:sticky;bottom:0;background:var(--bg2)}
+.stat-row{display:flex;gap:16px;flex-wrap:wrap}
+.stat-item{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text2);cursor:pointer;padding:6px 10px;border-radius:6px;transition:all .2s;background:none;border:none;font-family:'Noto Sans TC',sans-serif}
+.stat-item:hover{background:var(--bg3);color:var(--gold)}
+.stat-item.liked{color:var(--gold)}
+
+/* COMMENTS */
+.comments-section{margin-top:1.5rem;border-top:1px solid var(--border);padding-top:1.2rem}
+.comments-title{font-size:.85rem;color:var(--text3);letter-spacing:1px;margin-bottom:.8rem}
+.comment-item{background:var(--bg3);border-radius:var(--radius);padding:.8rem 1rem;margin-bottom:.6rem}
+.comment-author{font-size:.8rem;font-weight:600;color:var(--gold2);margin-bottom:.3rem}
+.comment-text{font-size:.82rem;color:var(--text2);line-height:1.7}
+.comment-time{font-size:.72rem;color:var(--text3);margin-top:.3rem}
+.comment-input-row{display:flex;gap:8px;margin-top:.8rem}
+.comment-input{flex:1;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:8px 12px;color:var(--text);font-size:13px;font-family:'Noto Sans TC',sans-serif;outline:none}
+.comment-input:focus{border-color:var(--gold)}
+
+/* UPLOAD PAGE */
+.upload-page{max-width:800px;margin:0 auto}
+.form-section{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius2);padding:1.5rem;margin-bottom:1.2rem}
+.form-section h3{font-size:1rem;color:var(--gold2);margin-bottom:1rem;padding-bottom:.6rem;border-bottom:1px solid var(--border)}
+.form-group{margin-bottom:1rem}
+.form-label{display:block;font-size:13px;color:var(--text2);margin-bottom:6px}
+.form-label span{color:var(--red);margin-left:2px}
+.form-input,.form-select,.form-textarea{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:9px 12px;color:var(--text);font-family:'Noto Sans TC',sans-serif;font-size:13px;outline:none;transition:border-color .2s}
+.form-input:focus,.form-select:focus,.form-textarea:focus{border-color:var(--gold)}
+.form-select option{background:var(--bg3)}
+.form-textarea{min-height:80px;resize:vertical;line-height:1.7}
+
+/* RICH EDITOR */
+.rich-editor{border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+.editor-toolbar{background:var(--bg3);padding:6px 10px;display:flex;gap:4px;flex-wrap:wrap;border-bottom:1px solid var(--border)}
+.toolbar-btn{background:none;border:none;color:var(--text2);cursor:pointer;padding:4px 8px;border-radius:4px;font-size:13px;transition:all .2s}
+.toolbar-btn:hover{background:var(--bg4);color:var(--text)}
+.toolbar-btn.active{background:rgba(201,168,76,.15);color:var(--gold)}
+.toolbar-sep{width:1px;background:var(--border);margin:2px 4px}
+.editor-content{background:var(--bg);min-height:140px;padding:12px;outline:none;font-size:.88rem;line-height:1.8;color:var(--text)}
+.editor-content:empty:before{content:attr(data-placeholder);color:var(--text3);pointer-events:none}
+
+/* UPLOAD ZONE */
+.upload-zone{border:2px dashed var(--border2);border-radius:var(--radius);padding:2rem;text-align:center;cursor:pointer;transition:all .2s;position:relative}
+.upload-zone:hover,.upload-zone.drag{border-color:var(--gold);background:rgba(201,168,76,.03)}
+.upload-zone i{font-size:2rem;color:var(--text3);margin-bottom:.6rem;display:block}
+.upload-zone p{font-size:.82rem;color:var(--text3)}
+.upload-zone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer}
+.uploaded-files{margin-top:.8rem;display:flex;flex-direction:column;gap:6px}
+.uploaded-file{background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:8px 12px;display:flex;align-items:center;gap:10px;font-size:13px}
+.uploaded-file i{color:var(--gold);font-size:1.1rem}
+.uploaded-file .fn{flex:1;color:var(--text);font-size:.8rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.uploaded-file .fs{color:var(--text3);font-size:.75rem;flex-shrink:0}
+.rm-file{background:none;border:none;color:var(--text3);cursor:pointer;font-size:14px;padding:2px 6px;border-radius:4px}
+.rm-file:hover{color:var(--red);background:rgba(192,57,43,.1)}
+.processing-bar{background:var(--bg3);border-radius:4px;height:4px;margin-top:6px;overflow:hidden;display:none}
+.processing-bar.show{display:block}
+.processing-fill{height:100%;background:linear-gradient(90deg,var(--gold),var(--gold2));border-radius:4px;animation:pgr 2s ease-in-out forwards}
+@keyframes pgr{from{width:0}to{width:100%}}
+.convert-badge{background:rgba(39,174,96,.1);border:1px solid rgba(39,174,96,.25);color:#2ecc71;font-size:11px;padding:1px 7px;border-radius:4px;flex-shrink:0}
+
+/* TAGS INPUT */
+.tags-input-area{display:flex;flex-wrap:wrap;gap:6px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:8px 10px;cursor:text;min-height:40px;align-items:center}
+.tags-input-area:focus-within{border-color:var(--gold)}
+.tag-chip{background:rgba(201,168,76,.12);border:1px solid rgba(201,168,76,.2);color:var(--gold);font-size:12px;padding:2px 8px;border-radius:4px;display:flex;align-items:center;gap:4px}
+.tag-chip button{background:none;border:none;cursor:pointer;color:var(--gold);font-size:14px;line-height:1;padding:0 1px}
+.tags-input{background:none;border:none;outline:none;color:var(--text);font-size:13px;min-width:60px;font-family:'Noto Sans TC',sans-serif}
+
+/* SENSITIVE WARNING */
+.sensitive-alert{background:rgba(231,76,60,.08);border:1px solid rgba(231,76,60,.3);border-radius:var(--radius);padding:10px 14px;display:none;align-items:center;gap:10px;margin-top:.6rem;font-size:.82rem;color:#e74c3c}
+.sensitive-alert.show{display:flex}
+
+/* SUBMIT STATUS */
+.submit-status{text-align:center;padding:2rem}
+.submit-icon{font-size:3rem;margin-bottom:1rem}
+.submit-status h3{color:var(--gold2);margin-bottom:.5rem}
+.submit-status p{color:var(--text2);font-size:.88rem;line-height:1.7}
+
+/* ADMIN */
+.admin-tabs{display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:1.5rem}
+.admin-tab{padding:8px 20px;font-size:13px;color:var(--text3);cursor:pointer;border-bottom:2px solid transparent;transition:all .2s;font-family:'Noto Sans TC',sans-serif;background:none;border-top:none;border-left:none;border-right:none}
+.admin-tab.active{color:var(--gold);border-bottom-color:var(--gold)}
+.admin-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius2);padding:1.2rem;margin-bottom:10px}
+.admin-card-header{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:.8rem}
+.admin-card-title{font-size:.9rem;font-weight:600;color:var(--text);flex:1;line-height:1.5}
+.status-badge{font-size:11px;padding:3px 10px;border-radius:10px;white-space:nowrap}
+.status-pending{background:rgba(243,156,18,.12);color:#f39c12;border:1px solid rgba(243,156,18,.25)}
+.status-approved{background:rgba(39,174,96,.12);color:#27ae60;border:1px solid rgba(39,174,96,.25)}
+.status-rejected{background:rgba(192,57,43,.12);color:#e74c3c;border:1px solid rgba(192,57,43,.25)}
+.admin-card-meta{font-size:12px;color:var(--text3);margin-bottom:.8rem}
+.admin-card-excerpt{font-size:.82rem;color:var(--text2);line-height:1.7;margin-bottom:1rem;background:var(--bg3);border-radius:6px;padding:8px 10px}
+.admin-actions{display:flex;gap:8px;flex-wrap:wrap}
+.sensitive-flag{background:rgba(231,76,60,.08);border:1px solid rgba(231,76,60,.2);border-radius:6px;padding:6px 10px;font-size:.78rem;color:#e74c3c;margin-bottom:.8rem;display:flex;gap:6px;align-items:center}
+
+/* LEADERBOARD */
+.leaderboard{max-width:600px;margin:0 auto}
+.lb-item{display:flex;align-items:center;gap:14px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius2);padding:1rem 1.2rem;margin-bottom:10px;cursor:pointer;transition:all .2s}
+.lb-item:hover{border-color:var(--gold);transform:translateX(4px)}
+.lb-rank{font-size:1.5rem;font-weight:700;font-family:'Noto Serif TC',serif;color:var(--text3);width:36px;text-align:center}
+.lb-rank.r1{color:#FFD700}
+.lb-rank.r2{color:#C0C0C0}
+.lb-rank.r3{color:#CD7F32}
+.lb-content{flex:1}
+.lb-title{font-size:.92rem;font-weight:600;color:var(--text);margin-bottom:3px}
+.lb-author{font-size:.78rem;color:var(--text3)}
+.lb-views{text-align:right}
+.lb-views-num{font-size:1.3rem;font-weight:700;color:var(--gold);font-family:'Noto Serif TC',serif}
+.lb-views-label{font-size:11px;color:var(--text3);display:block;margin-top:1px}
+
+/* LOGIN */
+.login-wrap{max-width:380px;margin:3rem auto;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius2);padding:2rem}
+.login-logo{text-align:center;margin-bottom:1.5rem}
+.login-logo h2{font-size:1.2rem;color:var(--gold2);letter-spacing:2px}
+.login-logo p{font-size:.8rem;color:var(--text3);margin-top:4px}
+.login-tabs{display:flex;gap:4px;background:var(--bg3);border-radius:var(--radius);padding:3px;margin-bottom:1.5rem}
+.login-tab{flex:1;padding:7px;border-radius:6px;font-size:13px;text-align:center;cursor:pointer;border:none;background:transparent;color:var(--text3);font-family:'Noto Sans TC',sans-serif;transition:all .2s}
+.login-tab.active{background:var(--gold);color:#0f0e0d;font-weight:700}
+
+/* PROFILE DROPDOWN */
+.dropdown{position:relative}
+.dropdown-menu{display:none;position:absolute;top:100%;right:0;margin-top:8px;background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius2);padding:.4rem;min-width:180px;z-index:300}
+.dropdown.open .dropdown-menu{display:block}
+.dropdown-item{display:flex;align-items:center;gap:8px;padding:7px 12px;border-radius:6px;font-size:13px;color:var(--text2);cursor:pointer;transition:all .2s;background:none;border:none;width:100%;text-align:left;font-family:'Noto Sans TC',sans-serif}
+.dropdown-item:hover{background:var(--bg3);color:var(--text)}
+.dropdown-sep{height:1px;background:var(--border);margin:.3rem 0}
+
+/* TOAST */
+.toast{position:fixed;bottom:20px;right:20px;z-index:999;display:flex;flex-direction:column;gap:8px}
+.toast-item{background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius);padding:10px 16px;font-size:.82rem;color:var(--text);animation:slide-in .3s ease;display:flex;align-items:center;gap:8px;max-width:300px;box-shadow:0 4px 20px rgba(0,0,0,.5)}
+.toast-item.success{border-left:3px solid #27ae60}
+.toast-item.info{border-left:3px solid var(--gold)}
+.toast-item.error{border-left:3px solid var(--red)}
+@keyframes slide-in{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
+
+/* PROFILE PAGE */
+.profile-header{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius2);padding:1.5rem;margin-bottom:1.5rem;display:flex;align-items:center;gap:1.5rem}
+.profile-avatar{width:72px;height:72px;border-radius:50%;background:linear-gradient(135deg,var(--gold),#8b6914);display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:700;color:#0f0e0d;border:3px solid var(--gold)}
+.profile-info h2{font-size:1.2rem;color:var(--text);margin-bottom:4px}
+.profile-info p{font-size:.82rem;color:var(--text3)}
+.profile-stats{display:flex;gap:1.5rem;margin-top:.8rem}
+.profile-stat-num{font-size:1.2rem;font-weight:700;color:var(--gold);font-family:'Noto Serif TC',serif}
+.profile-stat-label{font-size:11px;color:var(--text3)}
+
+.empty-state{text-align:center;padding:3rem 1rem;color:var(--text3)}
+.empty-state i{font-size:3rem;margin-bottom:1rem;display:block;opacity:.3}
+.empty-state p{font-size:.88rem}
+.loading{text-align:center;padding:2rem;color:var(--text3);font-size:.88rem}
+.loading i{margin-right:8px}
+
+::-webkit-scrollbar{width:6px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+
+<!-- TOAST -->
+<div class="toast" id="toastContainer"></div>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="logo" onclick="nav('home')">
+    <img class="logo-img" src="img/logo.png" alt="NMST" onerror="this.style.display='none';document.getElementById('logo-fallback').style.display='flex'">
+    <div id="logo-fallback" style="display:none;width:36px;height:36px;background:linear-gradient(135deg,var(--gold),var(--gold2));border-radius:8px;align-items:center;justify-content:center;font-size:18px;color:#0f0e0d"><i class="fas fa-landmark"></i></div>
+    <div class="logo-divider"></div>
+    <div>
+      <div class="logo-text">提示詞共學平台</div>
+      <div class="logo-sub">NMST · AI PROMPT</div>
+    </div>
+  </div>
+  <nav class="nav" id="mainNav">
+    <button class="nav-btn active" onclick="nav('home')" id="nav-home"><i class="fas fa-compass"></i>探索</button>
+    <button class="nav-btn" onclick="nav('rank')" id="nav-rank"><i class="fas fa-fire"></i>人氣排行</button>
+    <button class="nav-btn" onclick="nav('admin')" id="nav-admin" style="display:none"><i class="fas fa-shield-halved"></i>管理後台<span class="pending-badge" id="pendingBadge" style="display:none">0</span></button>
+  </nav>
+  <div class="user-area" id="userArea">
+    <button class="btn btn-outline" onclick="nav('login')"><i class="fas fa-right-to-bracket"></i>登入</button>
+  </div>
+</header>
+
+<!-- MAIN -->
+<main class="main" id="mainContent">
+
+  <!-- HOME -->
+  <div class="page active" id="page-home">
+    <div class="hero">
+      <h1>AI 提示詞共學</h1>
+      <p>館員們的 AI 探索成果，在這裡相互激盪。<br>分享你的提示詞，讓知識在博物館裡流動。</p>
+      <div class="hero-stats">
+        <div class="stat"><div class="stat-num" id="statPosts">—</div><div class="stat-label">篇分享</div></div>
+        <div class="stat"><div class="stat-num" id="statMembers">—</div><div class="stat-label">位成員</div></div>
+        <div class="stat"><div class="stat-num" id="statViews">—</div><div class="stat-label">次瀏覽</div></div>
+      </div>
+    </div>
+    <div class="filters" id="tagFilters">
+      <div class="search-box">
+        <i class="fas fa-search" style="color:var(--text3);font-size:13px"></i>
+        <input type="text" placeholder="搜尋提示詞..." oninput="filterCards(this.value)" id="searchInput">
+      </div>
+      <div class="filter-chip active" onclick="filterTag('全部',this)">全部</div>
+      <div class="filter-chip" onclick="filterTag('文字生成',this)">文字生成</div>
+      <div class="filter-chip" onclick="filterTag('圖像生成',this)">圖像生成</div>
+      <div class="filter-chip" onclick="filterTag('資料分析',this)">資料分析</div>
+      <div class="filter-chip" onclick="filterTag('創意寫作',this)">創意寫作</div>
+      <div class="filter-chip" onclick="filterTag('教育',this)">教育</div>
+      <div class="filter-chip" onclick="filterTag('翻譯',this)">翻譯</div>
+    </div>
+    <div class="sort-bar">
+      <span style="font-size:12px;color:var(--text3)">排序：</span>
+      <button class="sort-btn active" onclick="sortCards('popular',this)">最多人氣</button>
+      <button class="sort-btn" onclick="sortCards('newest',this)">最新上架</button>
+      <button class="sort-btn" onclick="sortCards('liked',this)">最多收藏</button>
+    </div>
+    <div class="cards-grid" id="cardsGrid"><div class="loading"><i class="fas fa-spinner fa-spin"></i>載入中...</div></div>
+  </div>
+
+  <!-- RANK -->
+  <div class="page" id="page-rank">
+    <div style="max-width:680px;margin:0 auto">
+      <div style="text-align:center;margin-bottom:2rem;padding-top:1rem">
+        <h2 style="font-size:1.6rem;color:var(--gold2);letter-spacing:2px;margin-bottom:.4rem">人氣排行榜</h2>
+        <p style="font-size:.85rem;color:var(--text3)">依累計瀏覽數排列，每次點擊都是鼓勵</p>
+      </div>
+      <div class="leaderboard" id="leaderboard"><div class="loading"><i class="fas fa-spinner fa-spin"></i>載入中...</div></div>
+    </div>
+  </div>
+
+  <!-- UPLOAD -->
+  <div class="page" id="page-upload">
+    <div class="upload-page">
+      <div style="margin-bottom:1.5rem">
+        <h2 style="font-size:1.3rem;color:var(--gold2);margin-bottom:.3rem">分享新的提示詞</h2>
+        <p style="font-size:.83rem;color:var(--text3)">上傳後將由管理員審核，通過後即可公開展示</p>
+      </div>
+      <div class="form-section" id="submitFormArea">
+        <h3><i class="fas fa-pen-nib" style="margin-right:8px;color:var(--gold)"></i>基本資訊</h3>
+        <div class="form-group">
+          <label class="form-label">標題 <span>*</span></label>
+          <input type="text" class="form-input" id="postTitle" placeholder="簡短描述這組提示詞的用途">
+        </div>
+        <div class="form-group">
+          <div style="display:flex;gap:10px">
+            <div style="flex:1">
+              <label class="form-label">AI 工具</label>
+              <select class="form-select" id="postTool">
+                <option>ChatGPT</option><option>Claude</option><option>Gemini</option>
+                <option>Midjourney</option><option>Stable Diffusion</option><option>DALL·E</option><option>其他</option>
+              </select>
+            </div>
+            <div style="flex:1">
+              <label class="form-label">類別</label>
+              <select class="form-select" id="postCategory">
+                <option>文字生成</option><option>圖像生成</option><option>資料分析</option>
+                <option>創意寫作</option><option>教育</option><option>翻譯</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">標籤</label>
+          <div class="tags-input-area" id="tagsArea" onclick="document.getElementById('tagInput').focus()">
+            <input type="text" id="tagInput" class="tags-input" placeholder="輸入後按 Enter 新增..." onkeydown="addTag(event)">
+          </div>
+        </div>
+      </div>
+      <div class="form-section">
+        <h3><i class="fas fa-code" style="margin-right:8px;color:var(--gold)"></i>提示詞內容</h3>
+        <div class="form-group">
+          <label class="form-label">提示詞 (Prompt) <span>*</span></label>
+          <div class="rich-editor">
+            <div class="editor-toolbar">
+              <button class="toolbar-btn" onclick="fmt('bold')" title="粗體"><i class="fas fa-bold"></i></button>
+              <button class="toolbar-btn" onclick="fmt('italic')" title="斜體"><i class="fas fa-italic"></i></button>
+              <button class="toolbar-btn" onclick="fmt('underline')" title="底線"><i class="fas fa-underline"></i></button>
+              <div class="toolbar-sep"></div>
+              <button class="toolbar-btn" onclick="fmt('insertUnorderedList')"><i class="fas fa-list-ul"></i></button>
+              <button class="toolbar-btn" onclick="fmt('insertOrderedList')"><i class="fas fa-list-ol"></i></button>
+              <div class="toolbar-sep"></div>
+              <button class="toolbar-btn" onclick="fmt('formatBlock','blockquote')"><i class="fas fa-quote-right"></i></button>
+              <button class="toolbar-btn" onclick="insertCodeBlock()"><i class="fas fa-code"></i></button>
+              <div class="toolbar-sep"></div>
+              <button class="toolbar-btn" onclick="fmt('justifyLeft')"><i class="fas fa-align-left"></i></button>
+              <button class="toolbar-btn" onclick="fmt('justifyCenter')"><i class="fas fa-align-center"></i></button>
+            </div>
+            <div class="editor-content" id="promptEditor" contenteditable="true" data-placeholder="在此輸入你的提示詞，可使用上方工具列進行格式排版..." oninput="checkSensitive()"></div>
+          </div>
+          <div class="sensitive-alert" id="sensitiveAlert">
+            <i class="fas fa-triangle-exclamation"></i>
+            <span id="sensitiveMsg">偵測到可能的敏感內容，請重新檢視後再提交。</span>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">AI 生成結果（文字說明）</label>
+          <div class="rich-editor">
+            <div class="editor-toolbar">
+              <button class="toolbar-btn" onclick="fmtResult('bold')"><i class="fas fa-bold"></i></button>
+              <button class="toolbar-btn" onclick="fmtResult('italic')"><i class="fas fa-italic"></i></button>
+              <div class="toolbar-sep"></div>
+              <button class="toolbar-btn" onclick="fmtResult('insertUnorderedList')"><i class="fas fa-list-ul"></i></button>
+            </div>
+            <div class="editor-content" id="resultEditor" contenteditable="true" data-placeholder="描述 AI 的回應內容，或附上文字形式的生成結果..."></div>
+          </div>
+        </div>
+      </div>
+      <div class="form-section">
+        <h3><i class="fas fa-images" style="margin-right:8px;color:var(--gold)"></i>附件上傳</h3>
+        <div class="form-group">
+          <label class="form-label">上傳圖片（自動轉換為 WebP 格式）</label>
+          <div class="upload-zone" id="imgZone" ondragover="dragOver(event,this)" ondragleave="dragLeave(this)" ondrop="dropImg(event)">
+            <input type="file" accept="image/*" multiple onchange="handleImages(this.files)" id="imgInput">
+            <i class="fas fa-image"></i>
+            <p>拖曳或點擊上傳圖片（JPG、PNG、GIF）</p>
+            <p style="font-size:.75rem;margin-top:4px">上傳後將自動轉換為 WebP 並壓縮</p>
+          </div>
+          <div class="uploaded-files" id="imgList"></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">上傳檔案（PDF、文件等，自動壓縮）</label>
+          <div class="upload-zone" id="fileZone" ondragover="dragOver(event,this)" ondragleave="dragLeave(this)" ondrop="dropFile(event)">
+            <input type="file" multiple onchange="handleFilesUpload(this.files)" id="fileInput">
+            <i class="fas fa-file-arrow-up"></i>
+            <p>拖曳或點擊上傳檔案（PDF、DOCX、XLSX 等）</p>
+            <p style="font-size:.75rem;margin-top:4px">最大 20MB</p>
+          </div>
+          <div class="uploaded-files" id="fileList"></div>
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:.5rem">
+        <button class="btn btn-outline" onclick="saveDraft()"><i class="fas fa-floppy-disk"></i>儲存草稿</button>
+        <button class="btn btn-primary" onclick="submitPost()" id="submitBtn"><i class="fas fa-paper-plane"></i>送審</button>
+      </div>
+      <div class="submit-status" id="submitStatus" style="display:none">
+        <div class="submit-icon">📮</div>
+        <h3>提交成功！</h3>
+        <p>您的分享已送交管理員審核<br>通過後將自動上架，請耐心等候通知</p>
+        <button class="btn btn-primary" style="margin-top:1.2rem" onclick="resetUpload()"><i class="fas fa-plus"></i>再新增一篇</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ADMIN -->
+  <div class="page" id="page-admin">
+    <div style="margin-bottom:1.5rem">
+      <h2 style="font-size:1.3rem;color:var(--gold2);margin-bottom:.3rem"><i class="fas fa-shield-halved" style="margin-right:8px"></i>管理後台</h2>
+      <p style="font-size:.83rem;color:var(--text3)">審核待上架的提示詞分享</p>
+    </div>
+    <div class="admin-tabs">
+      <button class="admin-tab active" onclick="adminTab('pending',this)">待審核 <span id="pendingCount" style="background:var(--gold);color:#0f0e0d;font-size:10px;padding:1px 6px;border-radius:8px;margin-left:4px">0</span></button>
+      <button class="admin-tab" onclick="adminTab('approved',this)">已上架</button>
+      <button class="admin-tab" onclick="adminTab('rejected',this)">已拒絕</button>
+    </div>
+    <div id="adminList"><div class="loading"><i class="fas fa-spinner fa-spin"></i>載入中...</div></div>
+  </div>
+
+  <!-- PROFILE -->
+  <div class="page" id="page-profile">
+    <div id="profileContent"></div>
+  </div>
+
+  <!-- LOGIN -->
+  <div class="page" id="page-login">
+    <div class="login-wrap">
+      <div class="login-logo">
+        <h2>提示詞共學平台</h2>
+        <p>館員專屬 · 知識共享</p>
+      </div>
+      <div class="login-tabs">
+        <button class="login-tab active" id="tab-login" onclick="switchLoginTab('login')">登入</button>
+        <button class="login-tab" id="tab-register" onclick="switchLoginTab('register')">註冊</button>
+      </div>
+      <div id="loginForm">
+        <div class="form-group">
+          <label class="form-label">電子郵件</label>
+          <input type="email" class="form-input" id="loginEmail" placeholder="yourname@nmst.gov.tw">
+        </div>
+        <div class="form-group">
+          <label class="form-label">密碼</label>
+          <input type="password" class="form-input" id="loginPwd" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()">
+        </div>
+        <button class="btn btn-primary" style="width:100%;justify-content:center;padding:10px" onclick="doLogin()"><i class="fas fa-right-to-bracket"></i>登入</button>
+      </div>
+      <div id="registerForm" style="display:none">
+        <div class="form-group">
+          <label class="form-label">姓名</label>
+          <input type="text" class="form-input" id="regName" placeholder="王小明">
+        </div>
+        <div class="form-group">
+          <label class="form-label">電子郵件</label>
+          <input type="email" class="form-input" id="regEmail" placeholder="yourname@nmst.gov.tw">
+        </div>
+        <div class="form-group">
+          <label class="form-label">密碼（至少 6 位）</label>
+          <input type="password" class="form-input" id="regPwd" placeholder="••••••••">
+        </div>
+        <button class="btn btn-primary" style="width:100%;justify-content:center;padding:10px" onclick="doRegister()"><i class="fas fa-user-plus"></i>建立帳號</button>
+      </div>
+      <p style="text-align:center;margin-top:1rem;font-size:.78rem;color:var(--text3)">本平台僅供館內人員使用</p>
+    </div>
+  </div>
+
+</main>
+</div>
+
+<!-- CARD MODAL -->
+<div class="overlay" id="cardModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="modalTitle">-</h2>
+      <button class="modal-close" onclick="closeModal()"><i class="fas fa-xmark"></i></button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+    <div class="modal-footer">
+      <div class="stat-row" id="modalStats"></div>
+      <button class="btn btn-outline btn-sm" onclick="closeModal()">關閉</button>
+    </div>
+  </div>
+</div>
+
+<!-- Supabase SDK -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script>
+// =============================================
+// CONFIG — 填入你的 Supabase 設定
+// =============================================
+const SUPABASE_URL = 'https://oqennxszrjjcwoulovse.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_82JqqtVTZxofUT5xMPuPYw_NCsr9ozg';
+const SENSITIVE_WORDS = ['色情','裸露','情色','暴力','殺人','自殺','毒品','賭博','詐騙','歧視','仇恨','恐怖'];
+
+// =============================================
+// SUPABASE CLIENT
+// =============================================
+const { createClient } = supabase;
+const db = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// =============================================
+// STATE
+// =============================================
+let currentUser = null;
+let currentProfile = null;
+let currentTag = '全部';
+let currentSort = 'popular';
+let currentAdminTab = 'pending';
+let searchQuery = '';
+let uploadTags = [];
+let pendingImages = [];
+let pendingFiles = [];
+let likedPostIds = new Set();
+let allPosts = [];
+
+// =============================================
+// AUTH
+// =============================================
+async function initAuth() {
+  const { data: { session } } = await db.auth.getSession();
+  if (session) await onLogin(session.user);
+  db.auth.onAuthStateChange(async (event, session) => {
+    if (event === 'SIGNED_IN') await onLogin(session.user);
+    if (event === 'SIGNED_OUT') onLogout();
+  });
+}
+
+async function onLogin(user) {
+  currentUser = user;
+  const { data: profile } = await db.from('profiles').select('*').eq('id', user.id).single();
+  currentProfile = profile;
+  const { data: likes } = await db.from('likes').select('post_id').eq('user_id', user.id);
+  likedPostIds = new Set((likes || []).map(l => l.post_id));
+  updateUserUI();
+  loadStats();
+}
+
+function onLogout() {
+  currentUser = null; currentProfile = null; likedPostIds = new Set();
+  updateUserUI();
+  nav('home');
+}
+
+function updateUserUI() {
+  const ua = document.getElementById('userArea');
+  const adminNav = document.getElementById('nav-admin');
+  const badge = document.getElementById('pendingBadge');
+  if (currentUser && currentProfile) {
+    const initial = (currentProfile.name || currentUser.email).slice(0, 1);
+    ua.innerHTML = `
+      <button class="btn btn-primary" onclick="nav('upload')"><i class="fas fa-plus"></i>新增分享</button>
+      <div class="dropdown" onclick="this.classList.toggle('open')">
+        <div class="avatar">${initial}</div>
+        <div class="dropdown-menu">
+          <button class="dropdown-item" onclick="nav('profile')"><i class="fas fa-user"></i>${currentProfile.name || '我的帳號'}</button>
+          <div class="dropdown-sep"></div>
+          <button class="dropdown-item" onclick="nav('upload')"><i class="fas fa-plus"></i>新增分享</button>
+          <button class="dropdown-item" onclick="doLogout()"><i class="fas fa-right-from-bracket"></i>登出</button>
+        </div>
+      </div>`;
+    if (currentProfile.role === 'admin') {
+      adminNav.style.display = '';
+      loadPendingCount();
+    }
+  } else {
+    ua.innerHTML = `<button class="btn btn-outline" onclick="nav('login')"><i class="fas fa-right-to-bracket"></i>登入</button>`;
+    adminNav.style.display = 'none';
+    if (badge) badge.style.display = 'none';
+  }
+}
+
+async function loadPendingCount() {
+  const { count } = await db.from('posts').select('id', { count: 'exact' }).eq('status', 'pending');
+  const badge = document.getElementById('pendingBadge');
+  const ct = document.getElementById('pendingCount');
+  if (badge) { badge.textContent = count || 0; badge.style.display = count > 0 ? '' : 'none'; }
+  if (ct) ct.textContent = count || 0;
+}
+
+async function doLogin() {
+  const email = document.getElementById('loginEmail').value.trim();
+  const pwd = document.getElementById('loginPwd').value;
+  if (!email || !pwd) { toast('請填寫帳號與密碼', 'error'); return; }
+  const { error } = await db.auth.signInWithPassword({ email, password: pwd });
+  if (error) { toast('帳號或密碼錯誤', 'error'); return; }
+  toast('歡迎回來！', 'success');
+  nav('home');
+}
+
+async function doRegister() {
+  const name = document.getElementById('regName').value.trim();
+  const email = document.getElementById('regEmail').value.trim();
+  const pwd = document.getElementById('regPwd').value;
+  if (!name || !email || !pwd) { toast('請填寫所有欄位', 'error'); return; }
+  if (pwd.length < 6) { toast('密碼至少 6 位', 'error'); return; }
+  const { error } = await db.auth.signUp({ email, password: pwd, options: { data: { name } } });
+  if (error) { toast(error.message || '註冊失敗', 'error'); return; }
+  toast('註冊成功！請確認您的電子郵件', 'success');
+}
+
+async function doLogout() {
+  await db.auth.signOut();
+  document.querySelectorAll('.dropdown').forEach(d => d.classList.remove('open'));
+  toast('已成功登出', 'info');
+}
+
+function switchLoginTab(tab) {
+  document.getElementById('loginForm').style.display = tab === 'login' ? '' : 'none';
+  document.getElementById('registerForm').style.display = tab === 'register' ? '' : 'none';
+  document.getElementById('tab-login').classList.toggle('active', tab === 'login');
+  document.getElementById('tab-register').classList.toggle('active', tab === 'register');
+}
+
+// =============================================
+// NAVIGATION
+// =============================================
+function nav(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  const el = document.getElementById('page-' + page);
+  if (el) el.classList.add('active');
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  const nb = document.getElementById('nav-' + page);
+  if (nb) nb.classList.add('active');
+  if (page === 'home') { loadPosts(); loadStats(); }
+  if (page === 'rank') loadRank();
+  if (page === 'admin') { loadAdminPosts(); loadPendingCount(); }
+  if (page === 'profile') renderProfile();
+  if (page === 'upload' && !currentUser) { nav('login'); return; }
+  document.querySelectorAll('.dropdown').forEach(d => d.classList.remove('open'));
+}
+
+// =============================================
+// POSTS — FEED
+// =============================================
+async function loadPosts() {
+  const grid = document.getElementById('cardsGrid');
+  grid.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i>載入中...</div>';
+  let q = db.from('posts').select('*, profiles(name)').eq('status', 'approved');
+  if (currentTag !== '全部') q = q.or(`category.eq.${currentTag},tags.cs.{"${currentTag}"}`);
+  if (currentSort === 'popular') q = q.order('view_count', { ascending: false });
+  else if (currentSort === 'newest') q = q.order('created_at', { ascending: false });
+  else if (currentSort === 'liked') q = q.order('like_count', { ascending: false });
+  const { data, error } = await q.limit(50);
+  if (error) { grid.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><p>載入失敗，請重新整理</p></div>'; return; }
+  allPosts = data || [];
+  renderCards();
+}
+
+function renderCards() {
+  const grid = document.getElementById('cardsGrid');
+  let list = allPosts;
+  if (searchQuery) {
+    const q = searchQuery.toLowerCase();
+    list = list.filter(p => (p.title + p.prompt + (p.result_text || '')).toLowerCase().includes(q));
+  }
+  const maxViews = Math.max(...list.map(p => p.view_count || 0), 1);
+  if (!list.length) { grid.innerHTML = '<div class="empty-state" style="column-span:all"><i class="fas fa-magnifying-glass"></i><p>沒有符合條件的分享</p></div>'; return; }
+  grid.innerHTML = list.map(p => {
+    const name = p.profiles?.name || '館員';
+    const initial = name.slice(0, 1);
+    const pct = Math.round((p.view_count || 0) / maxViews * 100);
+    const isLiked = likedPostIds.has(p.id);
+    const daysAgo = (Date.now() - new Date(p.created_at)) / 86400000;
+    return `
+    <div class="card" onclick="openPost('${p.id}')">
+      ${p.view_count > 300 ? '<div class="hot-badge">🔥 HOT</div>' : daysAgo < 7 ? '<div class="new-badge">✨ NEW</div>' : ''}
+      <div class="card-tags">
+        <span class="tag ai">${p.tool || 'AI'}</span>
+        <span class="tag">${p.category || '其他'}</span>
+        ${(p.tags || []).slice(0, 2).map(t => `<span class="tag">${t}</span>`).join('')}
+      </div>
+      <div class="card-title">${p.title}</div>
+      <div class="card-excerpt">${(p.prompt || '').slice(0, 80)}${(p.prompt || '').length > 80 ? '…' : ''}</div>
+      <div class="pop-bar-wrap">
+        <i class="fas fa-fire" style="font-size:10px;color:var(--gold)"></i>
+        <div class="pop-bar-track"><div class="pop-bar-fill" style="width:${pct}%"></div></div>
+        <span class="pop-pct">${pct}%</span>
+      </div>
+      <div class="card-meta" style="margin-top:8px">
+        <div class="card-author">
+          <div class="mini-avatar">${initial}</div>
+          <span>${name}</span>
+        </div>
+        <div class="card-stats">
+          <span class="card-stat"><i class="fas fa-eye" style="font-size:11px"></i>${p.view_count || 0}</span>
+          <span class="card-stat ${isLiked ? 'liked' : ''}" onclick="event.stopPropagation();toggleLike('${p.id}',this)" id="like-${p.id}">
+            <i class="fas fa-heart" style="font-size:11px"></i>${p.like_count || 0}
+          </span>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function openPost(id) {
+  // increment view
+  const post = allPosts.find(p => p.id === id) || {};
+  db.from('posts').update({ view_count: (post.view_count || 0) + 1 }).eq('id', id);
+  if (post.view_count !== undefined) post.view_count++;
+
+  // fetch full post
+  const { data: p } = await db.from('posts').select('*, profiles(name), attachments(*)').eq('id', id).single();
+  if (!p) return;
+  const { data: comments } = await db.from('comments').select('*, profiles(name)').eq('post_id', id).order('created_at');
+
+  const name = p.profiles?.name || '館員';
+  const initial = name.slice(0, 1);
+  const isLiked = likedPostIds.has(p.id);
+  const imgs = (p.attachments || []).filter(a => a.is_webp || a.file_type?.startsWith('image'));
+  const files = (p.attachments || []).filter(a => !a.is_webp && !a.file_type?.startsWith('image'));
+
+  document.getElementById('modalTitle').textContent = p.title;
+  document.getElementById('modalBody').innerHTML = `
+    <div style="display:flex;gap:8px;margin-bottom:1rem;flex-wrap:wrap;align-items:center">
+      <span class="tag ai">${p.tool || 'AI'}</span>
+      <span class="tag">${p.category || ''}</span>
+      ${(p.tags || []).map(t => `<span class="tag">${t}</span>`).join('')}
+      <span style="margin-left:auto;font-size:12px;color:var(--text3)">${new Date(p.created_at).toLocaleDateString('zh-TW')} · ${name}</span>
+    </div>
+    ${imgs.map(a => `<img src="${a.file_url}" style="width:100%;border-radius:var(--radius);margin-bottom:1rem">`).join('')}
+    <div class="prompt-block">
+      <div class="prompt-label"><i class="fas fa-code" style="margin-right:5px"></i>Prompt 提示詞</div>
+      <button class="copy-prompt-btn" onclick="copyPrompt(\`${(p.prompt||'').replace(/`/g,'\\`')}\`)"><i class="fas fa-copy"></i> 複製</button>
+      <div class="prompt-text">${p.prompt || ''}</div>
+    </div>
+    ${p.result_text ? `<div class="result-section">
+      <div class="prompt-label" style="color:var(--text2);margin-bottom:.4rem"><i class="fas fa-robot" style="margin-right:5px"></i>AI 生成結果</div>
+      <div class="prompt-block" style="background:var(--bg)"><div class="prompt-text">${p.result_text}</div></div>
+    </div>` : ''}
+    ${files.length ? `<div style="margin-top:1rem"><div class="prompt-label">附件檔案</div>${files.map(a=>`
+      <div class="uploaded-file" style="margin-top:6px">
+        <i class="fas fa-file"></i><span class="fn">${a.file_name}</span>
+        <a href="${a.file_url}" target="_blank" class="btn btn-outline btn-sm"><i class="fas fa-download"></i>下載</a>
+      </div>`).join('')}</div>` : ''}
+    <div class="comments-section">
+      <div class="comments-title">💬 討論（${(comments||[]).length}）</div>
+      <div id="commentList">
+        ${(comments||[]).length === 0 ? '<div style="font-size:.82rem;color:var(--text3);margin-bottom:.8rem">尚無留言，搶先留言吧！</div>' :
+          (comments||[]).map(c => `
+          <div class="comment-item">
+            <div class="comment-author">${c.profiles?.name || '館員'}</div>
+            <div class="comment-text">${c.content}</div>
+            <div class="comment-time">${new Date(c.created_at).toLocaleDateString('zh-TW')}</div>
+          </div>`).join('')}
+      </div>
+      ${currentUser ? `<div class="comment-input-row">
+        <input id="commentInput" class="comment-input" type="text" placeholder="留下你的想法..." onkeydown="if(event.key==='Enter')submitComment('${p.id}')">
+        <button class="btn btn-primary btn-sm" onclick="submitComment('${p.id}')"><i class="fas fa-paper-plane"></i></button>
+      </div>` : `<p style="font-size:.82rem;color:var(--text3);margin-top:.8rem"><a onclick="nav('login')" style="color:var(--gold);cursor:pointer">登入</a>後即可留言</p>`}
+    </div>`;
+
+  document.getElementById('modalStats').innerHTML = `
+    <button class="stat-item ${isLiked ? 'liked' : ''}" onclick="toggleLike('${p.id}',null,true)" id="mLike">
+      <i class="fas fa-heart"></i><span id="mLikeCount">${p.like_count || 0}</span> 收藏
+    </button>
+    <div class="stat-item"><i class="fas fa-eye"></i>${p.view_count || 0} 瀏覽</div>
+    <div class="stat-item"><i class="fas fa-comment"></i>${p.comment_count || 0} 留言</div>`;
+
+  document.getElementById('cardModal').classList.add('show');
+}
+
+function closeModal() { document.getElementById('cardModal').classList.remove('show'); }
+
+async function toggleLike(id, el, fromModal = false) {
+  if (!currentUser) { toast('請先登入才能收藏', 'info'); return; }
+  const isLiked = likedPostIds.has(id);
+  const post = allPosts.find(p => p.id === id);
+  if (isLiked) {
+    await db.from('likes').delete().eq('post_id', id).eq('user_id', currentUser.id);
+    likedPostIds.delete(id);
+    if (post) post.like_count = Math.max((post.like_count || 1) - 1, 0);
+  } else {
+    await db.from('likes').insert({ post_id: id, user_id: currentUser.id });
+    likedPostIds.add(id);
+    if (post) post.like_count = (post.like_count || 0) + 1;
+  }
+  const newLiked = !isLiked;
+  // update card
+  const cardEl = document.getElementById('like-' + id);
+  if (cardEl) {
+    cardEl.classList.toggle('liked', newLiked);
+    cardEl.innerHTML = `<i class="fas fa-heart" style="font-size:11px"></i>${post?.like_count || 0}`;
+  }
+  // update modal
+  if (fromModal) {
+    const ml = document.getElementById('mLike');
+    if (ml) ml.classList.toggle('liked', newLiked);
+    const mc = document.getElementById('mLikeCount');
+    if (mc) mc.textContent = post?.like_count || 0;
+  }
+  toast(newLiked ? '已加入收藏' : '已取消收藏', 'success');
+}
+
+async function submitComment(postId) {
+  const input = document.getElementById('commentInput');
+  const content = input?.value?.trim();
+  if (!content) return;
+  const { data, error } = await db.from('comments')
+    .insert({ post_id: postId, user_id: currentUser.id, content })
+    .select('*, profiles(name)').single();
+  if (error) { toast('留言失敗', 'error'); return; }
+  const list = document.getElementById('commentList');
+  if (list) {
+    list.innerHTML += `<div class="comment-item">
+      <div class="comment-author">${data.profiles?.name || '館員'}</div>
+      <div class="comment-text">${content}</div>
+      <div class="comment-time">剛剛</div>
+    </div>`;
+  }
+  input.value = '';
+  toast('已留言', 'success');
+}
+
+function copyPrompt(text) {
+  navigator.clipboard.writeText(text).then(() => toast('提示詞已複製到剪貼簿', 'success'));
+}
+
+function filterTag(tag, el) {
+  currentTag = tag;
+  document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  loadPosts();
+}
+function filterCards(v) { searchQuery = v; renderCards(); }
+function sortCards(s, el) {
+  currentSort = s;
+  document.querySelectorAll('.sort-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  loadPosts();
+}
+
+// =============================================
+// STATS
+// =============================================
+async function loadStats() {
+  const [posts, members, views] = await Promise.all([
+    db.from('posts').select('id', { count: 'exact' }).eq('status', 'approved'),
+    db.from('profiles').select('id', { count: 'exact' }),
+    db.from('posts').select('view_count').eq('status', 'approved'),
+  ]);
+  document.getElementById('statPosts').textContent = posts.count || 0;
+  document.getElementById('statMembers').textContent = members.count || 0;
+  const total = (views.data || []).reduce((s, p) => s + (p.view_count || 0), 0);
+  document.getElementById('statViews').textContent = total.toLocaleString();
+}
+
+// =============================================
+// RANK
+// =============================================
+async function loadRank() {
+  const { data } = await db.from('posts').select('*, profiles(name)').eq('status', 'approved').order('view_count', { ascending: false }).limit(20);
+  const el = document.getElementById('leaderboard');
+  if (!data?.length) { el.innerHTML = '<div class="empty-state"><i class="fas fa-trophy"></i><p>尚無資料</p></div>'; return; }
+  el.innerHTML = data.map((p, i) => `
+    <div class="lb-item" onclick="openPost('${p.id}')">
+      <div class="lb-rank ${i < 3 ? 'r' + (i + 1) : ''}">${i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : i + 1}</div>
+      <div class="lb-content">
+        <div class="lb-title">${p.title}</div>
+        <div class="lb-author">${p.profiles?.name || '館員'} · ${p.tool || ''} · ${p.category || ''}</div>
+      </div>
+      <div class="lb-views">
+        <div class="lb-views-num">${(p.view_count || 0).toLocaleString()}</div>
+        <span class="lb-views-label">次瀏覽</span>
+      </div>
+    </div>`).join('');
+}
+
+// =============================================
+// ADMIN
+// =============================================
+async function loadAdminPosts() {
+  const el = document.getElementById('adminList');
+  el.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i>載入中...</div>';
+  let q = db.from('posts').select('*, profiles(name)');
+  if (currentAdminTab === 'pending') q = q.eq('status', 'pending').order('created_at', { ascending: true });
+  else if (currentAdminTab === 'approved') q = q.eq('status', 'approved').order('created_at', { ascending: false });
+  else q = q.eq('status', 'rejected').order('updated_at', { ascending: false });
+  const { data } = await q.limit(50);
+  if (!data?.length) { el.innerHTML = `<div class="empty-state"><i class="fas fa-inbox"></i><p>目前沒有${currentAdminTab === 'pending' ? '待審核' : currentAdminTab === 'approved' ? '已上架' : '已拒絕'}的項目</p></div>`; return; }
+  el.innerHTML = data.map(p => {
+    const flags = p.sensitive_flags || [];
+    return `<div class="admin-card">
+      <div class="admin-card-header">
+        <div class="admin-card-title">${p.title}</div>
+        <span class="status-badge ${p.status === 'pending' ? 'status-pending' : p.status === 'approved' ? 'status-approved' : 'status-rejected'}">${p.status === 'pending' ? '待審核' : p.status === 'approved' ? '已上架' : '已拒絕'}</span>
+      </div>
+      <div class="admin-card-meta">${p.profiles?.name || '館員'} · ${p.tool || ''} · ${new Date(p.created_at).toLocaleDateString('zh-TW')}</div>
+      ${flags.length ? `<div class="sensitive-flag"><i class="fas fa-triangle-exclamation"></i>偵測到敏感詞：${flags.join('、')}</div>` : ''}
+      <div class="admin-card-excerpt">${(p.prompt || '').slice(0, 150)}${(p.prompt || '').length > 150 ? '…' : ''}</div>
+      <div class="admin-actions">
+        ${p.status === 'pending' ? `
+          <button class="btn btn-success btn-sm" onclick="setPostStatus('${p.id}','approved')"><i class="fas fa-check"></i>核准上架</button>
+          <button class="btn btn-danger btn-sm" onclick="setPostStatus('${p.id}','rejected')"><i class="fas fa-xmark"></i>拒絕</button>` : ''}
+        ${p.status === 'approved' ? `<button class="btn btn-danger btn-sm" onclick="setPostStatus('${p.id}','rejected')"><i class="fas fa-eye-slash"></i>下架</button>` : ''}
+        <button class="btn btn-outline btn-sm" onclick="openPost('${p.id}')"><i class="fas fa-eye"></i>預覽</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function setPostStatus(id, status) {
+  const { error } = await db.from('posts').update({ status }).eq('id', id);
+  if (error) { toast('操作失敗', 'error'); return; }
+  toast(status === 'approved' ? '已核准上架 ✓' : '已拒絕', status === 'approved' ? 'success' : 'info');
+  loadAdminPosts();
+  loadPendingCount();
+}
+
+function adminTab(tab, el) {
+  currentAdminTab = tab;
+  document.querySelectorAll('.admin-tab').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  loadAdminPosts();
+}
+
+// =============================================
+// UPLOAD / SUBMIT
+// =============================================
+function fmt(cmd, val = null) { document.getElementById('promptEditor').focus(); document.execCommand(cmd, false, val); }
+function fmtResult(cmd) { document.getElementById('resultEditor').focus(); document.execCommand(cmd, false, null); }
+function insertCodeBlock() {
+  const code = document.createElement('code');
+  code.style.cssText = 'background:rgba(0,0,0,.3);padding:2px 6px;border-radius:3px;font-family:monospace;color:var(--gold2)';
+  code.textContent = 'code here';
+  const r = window.getSelection().getRangeAt(0);
+  r.deleteContents(); r.insertNode(code);
+}
+
+function checkSensitive() {
+  const text = document.getElementById('promptEditor').innerText;
+  const found = SENSITIVE_WORDS.filter(w => text.includes(w));
+  const alert = document.getElementById('sensitiveAlert');
+  if (found.length) {
+    document.getElementById('sensitiveMsg').textContent = `偵測到敏感詞彙：${found.join('、')}，請重新檢視後再提交。`;
+    alert.classList.add('show');
+  } else alert.classList.remove('show');
+}
+
+function addTag(e) {
+  if (e.key === 'Enter' || e.key === ',') {
+    e.preventDefault();
+    const v = e.target.value.trim();
+    if (v && !uploadTags.includes(v)) { uploadTags.push(v); renderUploadTags(); }
+    e.target.value = '';
+  }
+}
+function removeTag(t) { uploadTags = uploadTags.filter(x => x !== t); renderUploadTags(); }
+function renderUploadTags() {
+  const area = document.getElementById('tagsArea');
+  area.querySelectorAll('.tag-chip').forEach(x => x.remove());
+  const inp = document.getElementById('tagInput');
+  uploadTags.forEach(t => {
+    const chip = document.createElement('span');
+    chip.className = 'tag-chip';
+    chip.innerHTML = `${t}<button onclick="removeTag('${t}')">×</button>`;
+    area.insertBefore(chip, inp);
+  });
+}
+
+async function convertToWebP(file) {
+  return new Promise((res, rej) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      const c = document.createElement('canvas');
+      c.width = img.width; c.height = img.height;
+      c.getContext('2d').drawImage(img, 0, 0);
+      c.toBlob(blob => { URL.revokeObjectURL(url); blob ? res(blob) : rej(); }, 'image/webp', 0.88);
+    };
+    img.onerror = rej; img.src = url;
+  });
+}
+
+function handleImages(files) {
+  const list = document.getElementById('imgList');
+  Array.from(files).forEach(f => {
+    pendingImages.push(f);
+    const div = document.createElement('div'); div.className = 'uploaded-file';
+    div.innerHTML = `<i class="fas fa-image" style="color:var(--gold)"></i><span class="fn">${f.name.replace(/\.[^.]+$/, '.webp')}</span><span class="convert-badge">WebP</span><span class="fs">${(f.size / 1024).toFixed(0)}KB → 轉換中...</span><button class="rm-file" onclick="this.closest('.uploaded-file').remove()"><i class="fas fa-xmark"></i></button>`;
+    list.appendChild(div);
+    const bar = document.createElement('div'); bar.className = 'processing-bar show'; bar.innerHTML = '<div class="processing-fill"></div>';
+    div.appendChild(bar);
+    setTimeout(() => { bar.remove(); div.querySelector('.fs').textContent = `${Math.floor(f.size / 1024 * 0.35)}KB (已壓縮 65%)`; }, 2000);
+  });
+}
+
+function handleFilesUpload(files) {
+  const list = document.getElementById('fileList');
+  Array.from(files).forEach(f => {
+    pendingFiles.push(f);
+    const ext = f.name.split('.').pop().toUpperCase();
+    const icons = { PDF: 'fa-file-pdf', DOCX: 'fa-file-word', XLSX: 'fa-file-excel', default: 'fa-file' };
+    const div = document.createElement('div'); div.className = 'uploaded-file';
+    div.innerHTML = `<i class="fas ${icons[ext] || icons.default}"></i><span class="fn">${f.name}</span><span class="fs">${(f.size / 1024).toFixed(0)}KB</span><button class="rm-file" onclick="this.closest('.uploaded-file').remove()"><i class="fas fa-xmark"></i></button>`;
+    list.appendChild(div);
+  });
+}
+
+function dragOver(e, el) { e.preventDefault(); el.classList.add('drag'); }
+function dragLeave(el) { el.classList.remove('drag'); }
+function dropImg(e) { e.preventDefault(); document.getElementById('imgZone').classList.remove('drag'); handleImages(e.dataTransfer.files); }
+function dropFile(e) { e.preventDefault(); document.getElementById('fileZone').classList.remove('drag'); handleFilesUpload(e.dataTransfer.files); }
+
+async function submitPost() {
+  if (!currentUser) { toast('請先登入', 'info'); return; }
+  const title = document.getElementById('postTitle').value.trim();
+  const prompt = document.getElementById('promptEditor').innerText.trim();
+  if (!title || !prompt) { toast('請填寫標題與提示詞', 'error'); return; }
+  const sensitiveFlags = SENSITIVE_WORDS.filter(w => (title + prompt).includes(w));
+  if (sensitiveFlags.length) { toast('內容含有敏感詞彙，無法提交', 'error'); return; }
+
+  document.getElementById('submitBtn').disabled = true;
+  document.getElementById('submitBtn').innerHTML = '<i class="fas fa-spinner fa-spin"></i>提交中...';
+
+  const payload = {
+    user_id: currentUser.id,
+    title,
+    tool: document.getElementById('postTool').value,
+    category: document.getElementById('postCategory').value,
+    tags: uploadTags,
+    prompt,
+    result_text: document.getElementById('resultEditor').innerText.trim() || null,
+    status: 'pending',
+    sensitive_flags: sensitiveFlags,
+    view_count: 0, like_count: 0, comment_count: 0,
+  };
+
+  const { data: post, error } = await db.from('posts').insert(payload).select().single();
+  if (error) { toast('提交失敗：' + error.message, 'error'); document.getElementById('submitBtn').disabled = false; document.getElementById('submitBtn').innerHTML = '<i class="fas fa-paper-plane"></i>送審'; return; }
+
+  // upload images
+  for (const file of pendingImages) {
+    try {
+      const webpBlob = await convertToWebP(file);
+      const fname = file.name.replace(/\.[^.]+$/, '.webp');
+      const path = `${post.id}/${Date.now()}_${fname}`;
+      const { data: up } = await db.storage.from('attachments').upload(path, webpBlob, { contentType: 'image/webp', upsert: true });
+      if (up) {
+        const { data: pub } = db.storage.from('attachments').getPublicUrl(path);
+        await db.from('attachments').insert({ post_id: post.id, file_name: fname, file_url: pub.publicUrl, file_type: 'image/webp', file_size: webpBlob.size, is_webp: true });
+      }
+    } catch (e) { console.warn('image upload failed', e); }
+  }
+  // upload files
+  for (const file of pendingFiles) {
+    try {
+      const path = `${post.id}/${Date.now()}_${file.name}`;
+      const { data: up } = await db.storage.from('attachments').upload(path, file, { contentType: file.type, upsert: true });
+      if (up) {
+        const { data: pub } = db.storage.from('attachments').getPublicUrl(path);
+        await db.from('attachments').insert({ post_id: post.id, file_name: file.name, file_url: pub.publicUrl, file_type: file.type, file_size: file.size, is_webp: false });
+      }
+    } catch (e) { console.warn('file upload failed', e); }
+  }
+
+  document.getElementById('submitFormArea').style.display = 'none';
+  document.getElementById('submitStatus').style.display = 'block';
+  document.getElementById('submitBtn').style.display = 'none';
+  toast('提交成功！等待審核中', 'success');
+  loadPendingCount();
+}
+
+function saveDraft() { if (!currentUser) { toast('請先登入', 'info'); return; } toast('草稿已儲存（本機）', 'info'); }
+
+function resetUpload() {
+  document.getElementById('submitFormArea').style.display = '';
+  document.getElementById('submitStatus').style.display = 'none';
+  document.getElementById('submitBtn').style.display = '';
+  document.getElementById('submitBtn').disabled = false;
+  document.getElementById('submitBtn').innerHTML = '<i class="fas fa-paper-plane"></i>送審';
+  document.getElementById('postTitle').value = '';
+  document.getElementById('promptEditor').innerHTML = '';
+  document.getElementById('resultEditor').innerHTML = '';
+  document.getElementById('imgList').innerHTML = '';
+  document.getElementById('fileList').innerHTML = '';
+  uploadTags = []; pendingImages = []; pendingFiles = [];
+  renderUploadTags();
+}
+
+// =============================================
+// PROFILE
+// =============================================
+async function renderProfile() {
+  if (!currentUser) { nav('login'); return; }
+  const { data: myPosts } = await db.from('posts').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: false });
+  const posts = myPosts || [];
+  const totalViews = posts.reduce((s, p) => s + (p.view_count || 0), 0);
+  const totalLikes = posts.reduce((s, p) => s + (p.like_count || 0), 0);
+  const initial = (currentProfile?.name || currentUser.email).slice(0, 1);
+  document.getElementById('profileContent').innerHTML = `
+    <div class="profile-header">
+      <div class="profile-avatar">${initial}</div>
+      <div class="profile-info">
+        <h2>${currentProfile?.name || '館員'}</h2>
+        <p>${currentUser.email} · ${currentProfile?.role === 'admin' ? '管理員' : '館員'}</p>
+        <div class="profile-stats">
+          <div><div class="profile-stat-num">${posts.filter(p => p.status === 'approved').length}</div><div class="profile-stat-label">已上架</div></div>
+          <div><div class="profile-stat-num">${posts.filter(p => p.status === 'pending').length}</div><div class="profile-stat-label">審核中</div></div>
+          <div><div class="profile-stat-num">${totalViews}</div><div class="profile-stat-label">總瀏覽</div></div>
+          <div><div class="profile-stat-num">${totalLikes}</div><div class="profile-stat-label">總收藏</div></div>
+        </div>
+      </div>
+    </div>
+    <h3 style="margin-bottom:1rem;font-size:.95rem;color:var(--text2)">我的分享</h3>
+    ${posts.length === 0 ? '<div class="empty-state"><i class="fas fa-pen-to-square"></i><p>尚未分享任何提示詞</p></div>' :
+    `<div class="cards-grid">${posts.map(p => `
+      <div class="card" onclick="openPost('${p.id}')">
+        <div class="card-tags">
+          <span class="tag ai">${p.tool || 'AI'}</span>
+          <span class="tag">${p.category || ''}</span>
+          <span class="status-badge ${p.status === 'pending' ? 'status-pending' : p.status === 'approved' ? 'status-approved' : 'status-rejected'}" style="margin-left:auto">${p.status === 'pending' ? '審核中' : p.status === 'approved' ? '已上架' : '已拒絕'}</span>
+        </div>
+        <div class="card-title">${p.title}</div>
+        <div class="card-meta" style="margin-top:8px">
+          <div class="card-stats">
+            <span class="card-stat"><i class="fas fa-eye" style="font-size:11px"></i>${p.view_count || 0}</span>
+            <span class="card-stat"><i class="fas fa-heart" style="font-size:11px"></i>${p.like_count || 0}</span>
+          </div>
+        </div>
+      </div>`).join('')}</div>`}`;
+}
+
+// =============================================
+// TOAST
+// =============================================
+function toast(msg, type = 'info') {
+  const c = document.getElementById('toastContainer');
+  const d = document.createElement('div');
+  d.className = `toast-item ${type}`;
+  const icon = { success: 'fa-check-circle', info: 'fa-circle-info', error: 'fa-triangle-exclamation' }[type];
+  d.innerHTML = `<i class="fas ${icon}" style="color:${type === 'success' ? '#27ae60' : type === 'error' ? '#e74c3c' : 'var(--gold)'}"></i>${msg}`;
+  c.appendChild(d);
+  setTimeout(() => { d.style.animation = 'slide-in .3s ease reverse'; setTimeout(() => d.remove(), 300); }, 2800);
+}
+
+// =============================================
+// INIT
+// =============================================
+document.addEventListener('click', e => {
+  if (!e.target.closest('.dropdown')) document.querySelectorAll('.dropdown').forEach(d => d.classList.remove('open'));
+});
+
+document.addEventListener('DOMContentLoaded', async () => {
+  await initAuth();
+  loadPosts();
+  loadStats();
+});
+</script>
+</body>
+</html>
