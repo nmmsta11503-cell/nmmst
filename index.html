@@ -667,7 +667,7 @@ const SUPABASE_KEY = 'sb_publishable_82JqqtVTZxofUT5xMPuPYw_NCsr9ozg';
 const SENSITIVE_WORDS = ['色情','裸露','情色','暴力','殺人','自殺','毒品','賭博','詐騙','歧視','仇恨','恐怖'];
 
 // =============================================
-// SUPABASE CLIENT（相容新版 publishable key）
+// SUPABASE CLIENT
 // =============================================
 const { createClient } = supabase;
 const db = createClient(SUPABASE_URL, SUPABASE_KEY, {
@@ -675,14 +675,26 @@ const db = createClient(SUPABASE_URL, SUPABASE_KEY, {
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: true,
+    storage: window.localStorage,
   },
-  global: {
-    headers: {
-      'apikey': SUPABASE_KEY,
-      'Authorization': `Bearer ${SUPABASE_KEY}`,
-    }
-  }
 });
+
+// sb_publishable_ key 無法直接作為 Bearer token 供 RLS 使用
+// 登入後用 session.access_token 建立第二個 client 供寫入操作
+let _authDb = null;
+
+async function getAuthDb() {
+  const { data: { session } } = await db.auth.getSession();
+  if (!session?.access_token) return db;
+  // 用使用者 JWT 建立 client，讓 RLS 能正確識別身份
+  _authDb = createClient(SUPABASE_URL, SUPABASE_KEY, {
+    auth: { autoRefreshToken: false, persistSession: false },
+    global: {
+      headers: { Authorization: `Bearer ${session.access_token}` }
+    }
+  });
+  return _authDb;
+}
 
 // =============================================
 // STATE
@@ -756,6 +768,7 @@ async function initAuth() {
 
 async function onLogin(user) {
   currentUser = user;
+  await getAuthDb(); // 預先建立 authDb
   const { data: profile } = await db.from('profiles').select('*').eq('id', user.id).single();
   currentProfile = profile;
   const [{ data: likes }, { data: bkms }] = await Promise.all([
@@ -920,7 +933,7 @@ function renderCards() {
 async function openPost(id) {
   // increment view
   const post = allPosts.find(p => p.id === id) || {};
-  db.from('posts').update({ view_count: (post.view_count || 0) + 1 }).eq('id', id);
+  getAuthDb().then(adb => adb.from('posts').update({ view_count: (post.view_count || 0) + 1 }).eq('id', id));
   if (post.view_count !== undefined) post.view_count++;
 
   // fetch full post
@@ -995,11 +1008,11 @@ async function toggleLike(id, el, fromModal = false) {
   const isLiked = likedPostIds.has(id);
   const post = allPosts.find(p => p.id === id);
   if (isLiked) {
-    await db.from('likes').delete().eq('post_id', id).eq('user_id', currentUser.id);
+    const adb3 = await getAuthDb(); await adb3.from('likes').delete().eq('post_id', id).eq('user_id', currentUser.id);
     likedPostIds.delete(id);
     if (post) post.like_count = Math.max((post.like_count || 1) - 1, 0);
   } else {
-    await db.from('likes').insert({ post_id: id, user_id: currentUser.id });
+    const adb2 = await getAuthDb(); await adb2.from('likes').insert({ post_id: id, user_id: currentUser.id });
     likedPostIds.add(id);
     if (post) post.like_count = (post.like_count || 0) + 1;
   }
@@ -1023,11 +1036,11 @@ async function toggleBookmark(id, fromModal = false) {
   const isBookmarked = bookmarkedPostIds.has(id);
   const post = allPosts.find(p => p.id === id);
   if (isBookmarked) {
-    await db.from('bookmarks').delete().eq('post_id', id).eq('user_id', currentUser.id);
+    const adb5 = await getAuthDb(); await adb5.from('bookmarks').delete().eq('post_id', id).eq('user_id', currentUser.id);
     bookmarkedPostIds.delete(id);
     if (post) post.bookmark_count = Math.max((post.bookmark_count || 1) - 1, 0);
   } else {
-    await db.from('bookmarks').insert({ post_id: id, user_id: currentUser.id });
+    const adb4 = await getAuthDb(); await adb4.from('bookmarks').insert({ post_id: id, user_id: currentUser.id });
     bookmarkedPostIds.add(id);
     if (post) post.bookmark_count = (post.bookmark_count || 0) + 1;
   }
@@ -1050,7 +1063,8 @@ async function submitComment(postId) {
   const input = document.getElementById('commentInput');
   const content = input?.value?.trim();
   if (!content) return;
-  const { data, error } = await db.from('comments')
+  const adb6 = await getAuthDb();
+  const { data, error } = await adb6.from('comments')
     .insert({ post_id: postId, user_id: currentUser.id, content })
     .select('*, profiles(name)').single();
   if (error) { toast('留言失敗', 'error'); return; }
@@ -1144,7 +1158,8 @@ async function loadAdminPosts() {
 }
 
 async function setPostStatus(id, status) {
-  const { error } = await db.from('posts').update({ status }).eq('id', id);
+  const adb8 = await getAuthDb();
+  const { error } = await adb8.from('posts').update({ status }).eq('id', id);
   if (error) { toast('操作失敗', 'error'); return; }
   toast(status === 'approved' ? '已核准上架 ✓' : '已拒絕', status === 'approved' ? 'success' : 'info');
   loadAdminPosts();
@@ -1273,7 +1288,8 @@ async function submitPost() {
     sensitive_flags: sensitiveFlags,
   };
 
-  const { data: post, error } = await db.from('posts').insert(payload).select().single();
+  const adb = await getAuthDb();
+  const { data: post, error } = await adb.from('posts').insert(payload).select().single();
   if (error) { toast('提交失敗：' + error.message, 'error'); document.getElementById('submitBtn').disabled = false; document.getElementById('submitBtn').innerHTML = '<i class="fas fa-paper-plane"></i>送審'; return; }
 
   // upload images
@@ -1642,7 +1658,8 @@ async function saveProfile() {
     updates.avatar_url = window._pendingAvatarUrl;
   }
 
-  const { error } = await db.from('profiles').update(updates).eq('id', currentUser.id);
+  const adb7 = await getAuthDb();
+  const { error } = await adb7.from('profiles').update(updates).eq('id', currentUser.id);
   if (error) { toast('儲存失敗：' + error.message, 'error'); return; }
 
   // Update local state
