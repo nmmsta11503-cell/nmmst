@@ -542,10 +542,22 @@ const SUPABASE_KEY = 'sb_publishable_82JqqtVTZxofUT5xMPuPYw_NCsr9ozg';
 const SENSITIVE_WORDS = ['色情','裸露','情色','暴力','殺人','自殺','毒品','賭博','詐騙','歧視','仇恨','恐怖'];
 
 // =============================================
-// SUPABASE CLIENT
+// SUPABASE CLIENT（相容新版 publishable key）
 // =============================================
 const { createClient } = supabase;
-const db = createClient(SUPABASE_URL, SUPABASE_KEY);
+const db = createClient(SUPABASE_URL, SUPABASE_KEY, {
+  auth: {
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: true,
+  },
+  global: {
+    headers: {
+      'apikey': SUPABASE_KEY,
+      'Authorization': `Bearer ${SUPABASE_KEY}`,
+    }
+  }
+});
 
 // =============================================
 // STATE
