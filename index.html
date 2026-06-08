@@ -75,19 +75,21 @@ h1,h2,h3{font-family:'Noto Serif TC',serif}
 .app{display:flex;flex-direction:column;min-height:100vh}
 
 /* HEADER */
-.header{background:var(--bg2);border-bottom:1px solid var(--border);padding:0 1.5rem;display:flex;align-items:center;gap:1rem;height:56px;position:sticky;top:0;z-index:100}
-.logo{display:flex;align-items:center;gap:8px;cursor:pointer;text-decoration:none;flex-shrink:0}
-.logo-img{height:32px;width:auto;object-fit:contain}
-.logo-divider{width:1px;height:22px;background:var(--border2)}
-.logo-text{font-family:'Noto Serif TC',serif;font-size:.88rem;font-weight:700;color:var(--gold2);letter-spacing:1px;white-space:nowrap}
-.logo-sub{font-size:9px;color:var(--text3);letter-spacing:.5px;margin-top:1px}
-.nav{display:flex;gap:2px;align-items:center;flex:1;justify-content:center}
-.nav-btn{background:none;border:none;color:var(--text2);cursor:pointer;padding:5px 12px;border-radius:var(--radius);font-size:13px;font-family:'Noto Sans TC',sans-serif;transition:all .2s;display:flex;align-items:center;gap:5px;white-space:nowrap}
+.header{background:var(--bg2);border-bottom:1px solid var(--border);padding:0 1.5rem;display:flex;align-items:center;gap:1.5rem;height:60px;position:sticky;top:0;z-index:100}
+.logo{display:flex;align-items:center;gap:10px;cursor:pointer;text-decoration:none;flex-shrink:0}
+.logo-img{height:36px;width:auto;object-fit:contain;display:block}
+.logo-divider{width:1px;height:26px;background:var(--border2);flex-shrink:0}
+.logo-text-wrap{display:flex;flex-direction:column;justify-content:center}
+.logo-text{font-family:'Noto Serif TC',serif;font-size:.9rem;font-weight:700;color:var(--gold2);letter-spacing:1px;white-space:nowrap;line-height:1.3}
+.logo-sub{font-size:9px;color:var(--text3);letter-spacing:.5px;line-height:1}
+.nav{display:flex;gap:4px;align-items:center;flex:1;justify-content:center}
+.nav-btn{background:none;border:none;color:var(--text2);cursor:pointer;padding:6px 14px;border-radius:var(--radius);font-size:13px;font-family:'Noto Sans TC',sans-serif;transition:all .2s;display:flex;align-items:center;gap:6px;white-space:nowrap;line-height:1}
 .nav-btn:hover{background:var(--bg3);color:var(--text)}
 .nav-btn.active{background:var(--bg3);color:var(--gold2)}
+.nav-btn i{font-size:13px}
 .pending-badge{background:var(--gold);color:#0f0e0d;font-size:10px;padding:1px 5px;border-radius:8px;margin-left:2px;font-weight:700}
 .user-area{display:flex;align-items:center;gap:8px;flex-shrink:0}
-.avatar{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--gold),#8b6914);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#0f0e0d;cursor:pointer;border:2px solid var(--gold)}
+.avatar{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,var(--gold),#8b6914);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#0f0e0d;cursor:pointer;border:2px solid var(--gold);flex-shrink:0}
 .btn{padding:7px 18px;border-radius:var(--radius);font-size:13px;font-family:'Noto Sans TC',sans-serif;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:6px;border:none}
 .btn-primary{background:var(--gold);color:#0f0e0d;font-weight:700}
 .btn-primary:hover{background:var(--gold2)}
@@ -333,6 +335,14 @@ h1,h2,h3{font-family:'Noto Serif TC',serif}
 .avatar-overlay{position:absolute;inset:0;border-radius:50%;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .2s;font-size:18px;color:#fff}
 .edit-panel{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius2);padding:1.25rem;margin-bottom:1.5rem}
 .edit-panel h3{font-size:.95rem;color:var(--gold2);margin-bottom:1rem;padding-bottom:.6rem;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px}
+.edit-tab{padding:7px 16px;font-size:13px;color:var(--text3);cursor:pointer;border:none;border-bottom:2px solid transparent;background:none;font-family:'Noto Sans TC',sans-serif;transition:all .2s;display:flex;align-items:center;gap:6px}
+.edit-tab:hover{color:var(--text)}
+.edit-tab.active{color:var(--gold);border-bottom-color:var(--gold)}
+.pwd-bar{flex:1;height:4px;border-radius:2px;background:var(--border);transition:background .3s}
+.pwd-bar.weak{background:#e74c3c}
+.pwd-bar.fair{background:#f39c12}
+.pwd-bar.good{background:#27ae60}
+.pwd-bar.strong{background:#2ecc71}
 .avatar-picker{display:flex;flex-wrap:wrap;gap:8px;margin-top:.6rem}
 .avatar-option{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.1rem;cursor:pointer;border:2px solid transparent;transition:all .2s;flex-shrink:0}
 .avatar-option:hover{transform:scale(1.1)}
@@ -370,9 +380,9 @@ h1,h2,h3{font-family:'Noto Serif TC',serif}
 <header class="header">
   <div class="logo" onclick="nav('home')">
     <img class="logo-img" src="img/logo.png" alt="NMST" onerror="this.style.display='none';document.getElementById('logo-fallback').style.display='flex'">
-    <div id="logo-fallback" style="display:none;width:36px;height:36px;background:linear-gradient(135deg,var(--gold),var(--gold2));border-radius:8px;align-items:center;justify-content:center;font-size:18px;color:#0f0e0d"><i class="fas fa-landmark"></i></div>
+    <div id="logo-fallback" style="display:none;width:36px;height:36px;background:linear-gradient(135deg,var(--gold),var(--gold2));border-radius:8px;align-items:center;justify-content:center;font-size:18px;color:#0f0e0d;flex-shrink:0"><i class="fas fa-landmark"></i></div>
     <div class="logo-divider"></div>
-    <div>
+    <div class="logo-text-wrap">
       <div class="logo-text">提示詞共學平台</div>
       <div class="logo-sub">NMST · AI PROMPT</div>
     </div>
@@ -385,7 +395,7 @@ h1,h2,h3{font-family:'Noto Serif TC',serif}
   <div class="user-area" id="userArea">
     <button class="btn btn-outline" onclick="nav('login')"><i class="fas fa-right-to-bracket"></i>登入</button>
   </div>
-  <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" title="切換深/淺色模式">
+  <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" title="切換深/淺色模式" style="flex-shrink:0">
     <i class="fas fa-moon" id="themeIcon"></i>
   </button>
 </header>
@@ -1248,18 +1258,19 @@ async function submitPost() {
   document.getElementById('submitBtn').innerHTML = '<i class="fas fa-spinner fa-spin"></i>提交中...';
 
   const selectedCategory = document.getElementById('postCategory').value;
-  const allTags = [...new Set([selectedCategory, ...uploadTags])];
+  const selectedTool = getSelectedTool();
+  // 把「類別」和「工具」都放進 tags，schema 只有 tags 欄位
+  const allTags = [...new Set([selectedTool, selectedCategory, ...uploadTags].filter(Boolean))];
 
   const payload = {
     user_id: currentUser.id,
     title,
-    tool: getSelectedTool(),
+    content_type: 'text',
     tags: allTags,
     prompt,
     result_text: document.getElementById('resultEditor').innerText.trim() || null,
     status: 'pending',
     sensitive_flags: sensitiveFlags,
-    view_count: 0, like_count: 0, comment_count: 0,
   };
 
   const { data: post, error } = await db.from('posts').insert(payload).select().single();
@@ -1382,45 +1393,90 @@ async function renderProfile() {
 
     <!-- 編輯面板（預設隱藏）-->
     <div class="edit-panel" id="editPanel" style="display:none">
-      <h3><i class="fas fa-user-pen"></i>編輯個人資料</h3>
-
-      <div class="form-group">
-        <label class="form-label">顯示名稱</label>
-        <input type="text" class="form-input" id="editName"
-          value="${currentProfile?.name || ''}" placeholder="你的名字">
-      </div>
-
-      <div class="form-group">
-        <label class="form-label">大頭貼</label>
-        <div style="display:flex;align-items:center;gap:16px;margin-bottom:10px">
-          <div id="previewAvatar" class="profile-avatar" style="background:${avatarStyle};flex-shrink:0">
-            ${avatarContent}
-          </div>
-          <div style="font-size:.82rem;color:var(--text3);line-height:1.7">
-            選擇下方顏色，或上傳自訂圖片<br>
-            <span style="font-size:.75rem">建議尺寸：200×200px 以上</span>
-          </div>
-        </div>
-
-        <div class="avatar-picker" id="avatarPicker">
-          ${AVATAR_PRESETS.map((p, i) => `
-            <div class="avatar-option ${currentProfile?.avatar_url === 'preset:'+i ? 'selected' : ''}"
-              style="background:${p.bg}"
-              onclick="selectPresetAvatar(${i})"
-              title="顏色 ${i+1}">
-            </div>`).join('')}
-          <label class="avatar-upload-btn" title="上傳自訂圖片">
-            <i class="fas fa-camera"></i>
-            <input type="file" accept="image/*" style="display:none" onchange="uploadAvatarImage(this.files[0])">
-          </label>
-        </div>
-      </div>
-
-      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1rem">
-        <button class="btn btn-outline btn-sm" onclick="toggleEditPanel()">取消</button>
-        <button class="btn btn-primary btn-sm" onclick="saveProfile()">
-          <i class="fas fa-check"></i>儲存變更
+      <!-- 分頁切換 -->
+      <div style="display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:1.25rem">
+        <button class="edit-tab active" id="editTab-profile" onclick="switchEditTab('profile')">
+          <i class="fas fa-user-pen"></i>基本資料
         </button>
+        <button class="edit-tab" id="editTab-password" onclick="switchEditTab('password')">
+          <i class="fas fa-lock"></i>修改密碼
+        </button>
+      </div>
+
+      <!-- 基本資料 -->
+      <div id="editSection-profile">
+        <div class="form-group">
+          <label class="form-label">顯示名稱</label>
+          <input type="text" class="form-input" id="editName"
+            value="${currentProfile?.name || ''}" placeholder="你的名字">
+        </div>
+        <div class="form-group">
+          <label class="form-label">大頭貼</label>
+          <div style="display:flex;align-items:center;gap:16px;margin-bottom:10px">
+            <div id="previewAvatar" class="profile-avatar" style="background:${avatarStyle};flex-shrink:0">
+              ${avatarContent}
+            </div>
+            <div style="font-size:.82rem;color:var(--text3);line-height:1.7">
+              選擇下方顏色，或上傳自訂圖片<br>
+              <span style="font-size:.75rem">建議尺寸：200×200px 以上</span>
+            </div>
+          </div>
+          <div class="avatar-picker" id="avatarPicker">
+            ${AVATAR_PRESETS.map((p, i) => `
+              <div class="avatar-option ${currentProfile?.avatar_url === 'preset:'+i ? 'selected' : ''}"
+                style="background:${p.bg}"
+                onclick="selectPresetAvatar(${i})"
+                title="顏色 ${i+1}">
+              </div>`).join('')}
+            <label class="avatar-upload-btn" title="上傳自訂圖片">
+              <i class="fas fa-camera"></i>
+              <input type="file" accept="image/*" style="display:none" onchange="uploadAvatarImage(this.files[0])">
+            </label>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1rem">
+          <button class="btn btn-outline btn-sm" onclick="toggleEditPanel()">取消</button>
+          <button class="btn btn-primary btn-sm" onclick="saveProfile()">
+            <i class="fas fa-check"></i>儲存變更
+          </button>
+        </div>
+      </div>
+
+      <!-- 修改密碼 -->
+      <div id="editSection-password" style="display:none">
+        <div class="form-group">
+          <label class="form-label">新密碼</label>
+          <div style="position:relative">
+            <input type="password" class="form-input" id="newPwd" placeholder="至少 8 位" autocomplete="new-password" style="padding-right:40px" oninput="updatePwdStrength(this.value)">
+            <button onclick="togglePwdVisibility('newPwd','eyeNew')" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text3);cursor:pointer;font-size:14px">
+              <i class="fas fa-eye" id="eyeNew"></i>
+            </button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">確認新密碼</label>
+          <div style="position:relative">
+            <input type="password" class="form-input" id="confirmPwd" placeholder="再輸入一次" autocomplete="new-password" style="padding-right:40px" onkeydown="if(event.key==='Enter')changePassword()">
+            <button onclick="togglePwdVisibility('confirmPwd','eyeConfirm')" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text3);cursor:pointer;font-size:14px">
+              <i class="fas fa-eye" id="eyeConfirm"></i>
+            </button>
+          </div>
+        </div>
+        <div id="pwdStrength" style="margin-bottom:.8rem;font-size:.78rem;display:none">
+          <div style="display:flex;gap:4px;margin-bottom:3px">
+            <div class="pwd-bar" id="pbar1"></div>
+            <div class="pwd-bar" id="pbar2"></div>
+            <div class="pwd-bar" id="pbar3"></div>
+            <div class="pwd-bar" id="pbar4"></div>
+          </div>
+          <span id="pwdStrengthLabel" style="color:var(--text3)"></span>
+        </div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1rem">
+          <button class="btn btn-outline btn-sm" onclick="toggleEditPanel()">取消</button>
+          <button class="btn btn-primary btn-sm" onclick="changePassword()">
+            <i class="fas fa-key"></i>確認變更
+          </button>
+        </div>
       </div>
     </div>
 
@@ -1447,7 +1503,76 @@ async function renderProfile() {
 function toggleEditPanel() {
   const panel = document.getElementById('editPanel');
   if (!panel) return;
-  panel.style.display = panel.style.display === 'none' ? '' : 'none';
+  const isHidden = panel.style.display === 'none';
+  panel.style.display = isHidden ? '' : 'none';
+  if (isHidden) switchEditTab('profile'); // 每次展開都重置到第一頁
+}
+
+function switchEditTab(tab) {
+  ['profile','password'].forEach(t => {
+    document.getElementById('editTab-' + t)?.classList.toggle('active', t === tab);
+    const sec = document.getElementById('editSection-' + t);
+    if (sec) sec.style.display = t === tab ? '' : 'none';
+  });
+  // 切換到密碼頁時清空欄位
+  if (tab === 'password') {
+    const np = document.getElementById('newPwd');
+    const cp = document.getElementById('confirmPwd');
+    if (np) np.value = '';
+    if (cp) cp.value = '';
+    updatePwdStrength('');
+  }
+}
+
+function togglePwdVisibility(inputId, iconId) {
+  const input = document.getElementById(inputId);
+  const icon  = document.getElementById(iconId);
+  if (!input || !icon) return;
+  const isHidden = input.type === 'password';
+  input.type = isHidden ? 'text' : 'password';
+  icon.className = isHidden ? 'fas fa-eye-slash' : 'fas fa-eye';
+}
+
+function updatePwdStrength(pwd) {
+  const wrap = document.getElementById('pwdStrength');
+  const label = document.getElementById('pwdStrengthLabel');
+  if (!wrap) return;
+  if (!pwd) { wrap.style.display = 'none'; return; }
+  wrap.style.display = '';
+  let score = 0;
+  if (pwd.length >= 8)  score++;
+  if (/[A-Z]/.test(pwd)) score++;
+  if (/[0-9]/.test(pwd)) score++;
+  if (/[^A-Za-z0-9]/.test(pwd)) score++;
+  const levels = ['','weak','fair','good','strong'];
+  const labels = ['','太短','普通','良好','強'];
+  const colors = ['','#e74c3c','#f39c12','#27ae60','#2ecc71'];
+  [1,2,3,4].forEach(i => {
+    const bar = document.getElementById('pbar' + i);
+    if (bar) bar.className = 'pwd-bar ' + (i <= score ? levels[score] : '');
+  });
+  if (label) { label.textContent = '強度：' + (labels[score] || ''); label.style.color = colors[score] || 'var(--text3)'; }
+}
+
+async function changePassword() {
+  const newPwd     = document.getElementById('newPwd')?.value || '';
+  const confirmPwd = document.getElementById('confirmPwd')?.value || '';
+  if (!newPwd) { toast('請輸入新密碼', 'error'); return; }
+  if (newPwd.length < 8) { toast('密碼至少需要 8 位', 'error'); return; }
+  if (newPwd !== confirmPwd) { toast('兩次密碼輸入不一致', 'error'); return; }
+  const btn = document.querySelector('#editSection-password .btn-primary');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>處理中...'; }
+  const { error } = await db.auth.updateUser({ password: newPwd });
+  if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-key"></i>確認變更'; }
+  if (error) {
+    toast('密碼變更失敗：' + error.message, 'error');
+    return;
+  }
+  toast('🔐 密碼已成功變更', 'success');
+  document.getElementById('newPwd').value = '';
+  document.getElementById('confirmPwd').value = '';
+  updatePwdStrength('');
+  toggleEditPanel();
 }
 
 function selectPresetAvatar(idx) {
