@@ -103,9 +103,34 @@ h1,h2,h3{font-family:'Noto Serif TC',serif}
 .page.active{display:block}
 
 /* HERO */
-.hero{text-align:center;padding:3rem 1rem 2rem;max-width:700px;margin:0 auto}
+.hero{text-align:center;padding:2rem 1rem 1.5rem;max-width:700px;margin:0 auto}
 .hero h1{font-size:2.2rem;color:var(--gold2);letter-spacing:3px;margin-bottom:.8rem}
 .hero p{color:var(--text2);font-size:1rem;line-height:1.8}
+
+/* AI 工具連結 */
+.ai-links{display:flex;justify-content:center;gap:12px;margin-top:1.5rem;flex-wrap:wrap}
+.ai-link{display:flex;align-items:center;gap:8px;padding:8px 18px;border-radius:20px;background:var(--bg2);border:1px solid var(--border);color:var(--text2);text-decoration:none;font-size:13px;font-weight:500;transition:all .2s}
+.ai-link:hover{border-color:var(--gold);color:var(--gold);transform:translateY(-2px);box-shadow:0 4px 12px rgba(0,0,0,.2)}
+.ai-link img{width:20px;height:20px;object-fit:contain}
+.ai-link svg{flex-shrink:0}
+[data-theme=light] .ai-link{background:#fff}
+[data-theme=light] .ai-link:hover{border-color:#9a6f1e;color:#9a6f1e}
+
+/* 回到頂部按鈕 */
+.back-to-top{
+  position:fixed;bottom:24px;right:24px;z-index:150;
+  width:42px;height:42px;border-radius:50%;
+  background:var(--gold);color:#0f0e0d;border:none;
+  font-size:16px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  opacity:0;pointer-events:none;
+  transition:opacity .3s,transform .3s,box-shadow .2s;
+  box-shadow:0 4px 14px rgba(0,0,0,.35);
+}
+.back-to-top.visible{opacity:1;pointer-events:auto}
+.back-to-top:hover{transform:translateY(-3px);box-shadow:0 6px 20px rgba(0,0,0,.45)}
+[data-theme=light] .back-to-top{box-shadow:0 4px 14px rgba(0,0,0,.18)}
+@media(max-width:600px){.back-to-top{bottom:16px;right:16px;width:38px;height:38px;font-size:14px}}
 .hero-stats{display:flex;justify-content:center;gap:2rem;margin-top:2rem}
 .stat{text-align:center}
 .stat-num{font-size:1.8rem;font-weight:700;color:var(--gold);font-family:'Noto Serif TC',serif}
@@ -143,6 +168,9 @@ h1,h2,h3{font-family:'Noto Serif TC',serif}
 .card-stat{display:flex;align-items:center;gap:3px;cursor:pointer;transition:color .2s}
 .card-stat:hover{color:var(--gold)}
 .card-stat.liked{color:var(--gold)}
+.card-stat.bookmarked{color:#3498db}
+[data-theme=light] .card-stat.bookmarked{color:#2471a3}
+.stat-item.bookmarked{color:#3498db}
 .hot-badge{position:absolute;top:10px;right:10px;background:linear-gradient(135deg,#c0392b,#e74c3c);color:#fff;font-size:10px;padding:2px 8px;border-radius:10px;font-weight:700;letter-spacing:1px}
 .new-badge{position:absolute;top:10px;right:10px;background:linear-gradient(135deg,#2980b9,#3498db);color:#fff;font-size:10px;padding:2px 8px;border-radius:10px;font-weight:700;letter-spacing:1px}
 
@@ -303,6 +331,17 @@ h1,h2,h3{font-family:'Noto Serif TC',serif}
 .profile-header{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius2);padding:1.5rem;margin-bottom:1.5rem;display:flex;align-items:center;gap:1.5rem}
 .profile-avatar{width:72px;height:72px;border-radius:50%;background:linear-gradient(135deg,var(--gold),#8b6914);display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:700;color:#0f0e0d;border:3px solid var(--gold)}
 .profile-info h2{font-size:1.2rem;color:var(--text);margin-bottom:4px}
+.profile-avatar-wrap{position:relative;flex-shrink:0;cursor:pointer}
+.profile-avatar-wrap:hover .avatar-overlay{opacity:1}
+.avatar-overlay{position:absolute;inset:0;border-radius:50%;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .2s;font-size:18px;color:#fff}
+.edit-panel{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius2);padding:1.25rem;margin-bottom:1.5rem}
+.edit-panel h3{font-size:.95rem;color:var(--gold2);margin-bottom:1rem;padding-bottom:.6rem;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px}
+.avatar-picker{display:flex;flex-wrap:wrap;gap:8px;margin-top:.6rem}
+.avatar-option{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.1rem;cursor:pointer;border:2px solid transparent;transition:all .2s;flex-shrink:0}
+.avatar-option:hover{transform:scale(1.1)}
+.avatar-option.selected{border-color:var(--gold);box-shadow:0 0 0 3px rgba(201,168,76,.3)}
+.avatar-upload-btn{width:44px;height:44px;border-radius:50%;border:2px dashed var(--border2);background:var(--bg3);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;color:var(--text3);transition:all .2s;flex-shrink:0}
+.avatar-upload-btn:hover{border-color:var(--gold);color:var(--gold)}
 .profile-info p{font-size:.82rem;color:var(--text3)}
 .profile-stats{display:flex;gap:1.5rem;margin-top:.8rem}
 .profile-stat-num{font-size:1.2rem;font-weight:700;color:var(--gold);font-family:'Noto Serif TC',serif}
@@ -324,6 +363,11 @@ h1,h2,h3{font-family:'Noto Serif TC',serif}
 
 <!-- TOAST -->
 <div class="toast" id="toastContainer"></div>
+
+<!-- 回到頂部 -->
+<button class="back-to-top" id="backToTop" onclick="window.scrollTo({top:0,behavior:'smooth'})" title="回到最上方">
+  <i class="fas fa-chevron-up"></i>
+</button>
 
 <!-- HEADER -->
 <header class="header">
@@ -357,10 +401,27 @@ h1,h2,h3{font-family:'Noto Serif TC',serif}
     <div class="hero">
       <h1>AI 提示詞共學</h1>
       <p>館員們的 AI 探索成果，在這裡相互激盪。<br>分享你的提示詞，讓知識在博物館裡流動。</p>
-      <div class="hero-stats">
-        <div class="stat"><div class="stat-num" id="statPosts">—</div><div class="stat-label">篇分享</div></div>
-        <div class="stat"><div class="stat-num" id="statMembers">—</div><div class="stat-label">位成員</div></div>
-        <div class="stat"><div class="stat-num" id="statViews">—</div><div class="stat-label">次瀏覽</div></div>
+      <div class="ai-links">
+        <a class="ai-link" href="https://chatgpt.com" target="_blank" rel="noopener">
+          <img src="https://upload.wikimedia.org/wikipedia/commons/0/04/ChatGPT_logo.svg" alt="ChatGPT">
+          <span>ChatGPT</span>
+        </a>
+        <a class="ai-link ai-link-meta" href="https://www.meta.ai" target="_blank" rel="noopener">
+          <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" width="24" height="24">
+            <path d="M20 8C13.373 8 8 13.373 8 20s5.373 12 12 12 12-5.373 12-12S26.627 8 20 8z" fill="url(#metaGrad)"/>
+            <path d="M14 20c0-2 1.2-3.8 3-4.7 1.8-.9 3.9-.7 5.5.5L20 17.5c-.8-.6-1.9-.7-2.8-.3-.9.4-1.5 1.4-1.5 2.5 0 1.1.6 2.1 1.5 2.5.9.4 2 .3 2.8-.3l2.5 1.7c-1.6 1.2-3.7 1.4-5.5.5-1.8-.9-3-2.7-3-4.6z" fill="white"/>
+            <defs><linearGradient id="metaGrad" x1="8" y1="8" x2="32" y2="32" gradientUnits="userSpaceOnUse"><stop stop-color="#0668E1"/><stop offset="1" stop-color="#0064E0"/></linearGradient></defs>
+          </svg>
+          <span>Meta AI</span>
+        </a>
+        <a class="ai-link" href="https://gemini.google.com" target="_blank" rel="noopener">
+          <img src="https://upload.wikimedia.org/wikipedia/commons/8/8a/Google_Gemini_logo.svg" alt="Gemini">
+          <span>Gemini</span>
+        </a>
+        <a class="ai-link" href="https://claude.ai" target="_blank" rel="noopener">
+          <img src="https://upload.wikimedia.org/wikipedia/commons/8/87/Anthropic_logo.svg" alt="Claude">
+          <span>Claude</span>
+        </a>
       </div>
     </div>
     <div class="filters" id="tagFilters">
@@ -378,9 +439,10 @@ h1,h2,h3{font-family:'Noto Serif TC',serif}
     </div>
     <div class="sort-bar">
       <span style="font-size:12px;color:var(--text3)">排序：</span>
-      <button class="sort-btn active" onclick="sortCards('popular',this)">最多人氣</button>
-      <button class="sort-btn" onclick="sortCards('newest',this)">最新上架</button>
-      <button class="sort-btn" onclick="sortCards('liked',this)">最多收藏</button>
+      <button class="sort-btn active" onclick="sortCards('views',this)"><i class="fas fa-eye" style="font-size:11px"></i>最多觀看</button>
+      <button class="sort-btn" onclick="sortCards('likes',this)"><i class="fas fa-heart" style="font-size:11px"></i>最多按讚</button>
+      <button class="sort-btn" onclick="sortCards('bookmarks',this)"><i class="fas fa-bookmark" style="font-size:11px"></i>最多收藏</button>
+      <button class="sort-btn" onclick="sortCards('newest',this)"><i class="fas fa-clock" style="font-size:11px"></i>最新上架</button>
     </div>
     <div class="cards-grid" id="cardsGrid"><div class="loading"><i class="fas fa-spinner fa-spin"></i>載入中...</div></div>
   </div>
@@ -413,10 +475,14 @@ h1,h2,h3{font-family:'Noto Serif TC',serif}
           <div style="display:flex;gap:10px">
             <div style="flex:1">
               <label class="form-label">AI 工具</label>
-              <select class="form-select" id="postTool">
-                <option>ChatGPT</option><option>Claude</option><option>Gemini</option>
-                <option>Midjourney</option><option>Stable Diffusion</option><option>DALL·E</option><option>其他</option>
+              <select class="form-select" id="postTool" onchange="handleToolChange(this.value)">
+                <option>ChatGPT</option>
+                <option>Claude</option>
+                <option>Gemini</option>
+                <option>Midjourney</option>
+                <option>其他（自行輸入）</option>
               </select>
+              <input type="text" class="form-input" id="postToolCustom" placeholder="輸入 AI 工具名稱…" style="display:none;margin-top:6px">
             </div>
             <div style="flex:1">
               <label class="form-label">類別</label>
@@ -628,6 +694,7 @@ let uploadTags = [];
 let pendingImages = [];
 let pendingFiles = [];
 let likedPostIds = new Set();
+let bookmarkedPostIds = new Set();
 let allPosts = [];
 
 // =============================================
@@ -646,14 +713,18 @@ async function onLogin(user) {
   currentUser = user;
   const { data: profile } = await db.from('profiles').select('*').eq('id', user.id).single();
   currentProfile = profile;
-  const { data: likes } = await db.from('likes').select('post_id').eq('user_id', user.id);
+  const [{ data: likes }, { data: bkms }] = await Promise.all([
+    db.from('likes').select('post_id').eq('user_id', user.id),
+    db.from('bookmarks').select('post_id').eq('user_id', user.id),
+  ]);
   likedPostIds = new Set((likes || []).map(l => l.post_id));
+  bookmarkedPostIds = new Set((bkms || []).map(b => b.post_id));
   updateUserUI();
   loadStats();
 }
 
 function onLogout() {
-  currentUser = null; currentProfile = null; likedPostIds = new Set();
+  currentUser = null; currentProfile = null; likedPostIds = new Set(); bookmarkedPostIds = new Set();
   updateUserUI();
   nav('home');
 }
@@ -738,7 +809,7 @@ function nav(page) {
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
   const nb = document.getElementById('nav-' + page);
   if (nb) nb.classList.add('active');
-  if (page === 'home') { loadPosts(); loadStats(); }
+  if (page === 'home') { loadPosts(); }
   if (page === 'rank') loadRank();
   if (page === 'admin') { loadAdminPosts(); loadPendingCount(); }
   if (page === 'profile') renderProfile();
@@ -754,9 +825,11 @@ async function loadPosts() {
   grid.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i>載入中...</div>';
   let q = db.from('posts').select('*, profiles(name)').eq('status', 'approved');
   if (currentTag !== '全部') q = q.or(`category.eq.${currentTag},tags.cs.{"${currentTag}"}`);
-  if (currentSort === 'popular') q = q.order('view_count', { ascending: false });
-  else if (currentSort === 'newest') q = q.order('created_at', { ascending: false });
-  else if (currentSort === 'liked') q = q.order('like_count', { ascending: false });
+  if (currentSort === 'views')     q = q.order('view_count',     { ascending: false });
+  else if (currentSort === 'likes')     q = q.order('like_count',     { ascending: false });
+  else if (currentSort === 'bookmarks') q = q.order('bookmark_count', { ascending: false });
+  else if (currentSort === 'newest')    q = q.order('created_at',     { ascending: false });
+  else q = q.order('view_count', { ascending: false });
   const { data, error } = await q.limit(50);
   if (error) { grid.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><p>載入失敗，請重新整理</p></div>'; return; }
   allPosts = data || [];
@@ -777,6 +850,7 @@ function renderCards() {
     const initial = name.slice(0, 1);
     const pct = Math.round((p.view_count || 0) / maxViews * 100);
     const isLiked = likedPostIds.has(p.id);
+    const isBookmarked = bookmarkedPostIds.has(p.id);
     const daysAgo = (Date.now() - new Date(p.created_at)) / 86400000;
     return `
     <div class="card" onclick="openPost('${p.id}')">
@@ -800,8 +874,11 @@ function renderCards() {
         </div>
         <div class="card-stats">
           <span class="card-stat"><i class="fas fa-eye" style="font-size:11px"></i>${p.view_count || 0}</span>
-          <span class="card-stat ${isLiked ? 'liked' : ''}" onclick="event.stopPropagation();toggleLike('${p.id}',this)" id="like-${p.id}">
-            <i class="fas fa-heart" style="font-size:11px"></i>${p.like_count || 0}
+          <span class="card-stat ${isLiked ? 'liked' : ''}" onclick="event.stopPropagation();toggleLike('${p.id}')" id="like-${p.id}" title="按讚">
+            <i class="${isLiked ? 'fas' : 'far'} fa-heart" style="font-size:11px"></i>${p.like_count || 0}
+          </span>
+          <span class="card-stat ${isBookmarked ? 'bookmarked' : ''}" onclick="event.stopPropagation();toggleBookmark('${p.id}')" id="bkm-${p.id}" title="收藏">
+            <i class="${isBookmarked ? 'fas' : 'far'} fa-bookmark" style="font-size:11px"></i>${p.bookmark_count || 0}
           </span>
         </div>
       </div>
@@ -866,9 +943,13 @@ async function openPost(id) {
       </div>` : `<p style="font-size:.82rem;color:var(--text3);margin-top:.8rem"><a onclick="nav('login')" style="color:var(--gold);cursor:pointer">登入</a>後即可留言</p>`}
     </div>`;
 
+  const isModalBookmarked = bookmarkedPostIds.has(p.id);
   document.getElementById('modalStats').innerHTML = `
-    <button class="stat-item ${isLiked ? 'liked' : ''}" onclick="toggleLike('${p.id}',null,true)" id="mLike">
-      <i class="fas fa-heart"></i><span id="mLikeCount">${p.like_count || 0}</span> 收藏
+    <button class="stat-item ${isLiked ? 'liked' : ''}" onclick="toggleLike('${p.id}', null, true)" id="mLike" title="按讚">
+      <i class="${isLiked ? 'fas' : 'far'} fa-heart"></i><span id="mLikeCount">${p.like_count || 0}</span> 按讚
+    </button>
+    <button class="stat-item ${isModalBookmarked ? 'bookmarked' : ''}" onclick="toggleBookmark('${p.id}', true)" id="mBkm" title="收藏">
+      <i class="${isModalBookmarked ? 'fas' : 'far'} fa-bookmark"></i><span id="mBkmCount">${p.bookmark_count || 0}</span> 收藏
     </button>
     <div class="stat-item"><i class="fas fa-eye"></i>${p.view_count || 0} 瀏覽</div>
     <div class="stat-item"><i class="fas fa-comment"></i>${p.comment_count || 0} 留言</div>`;
@@ -879,7 +960,7 @@ async function openPost(id) {
 function closeModal() { document.getElementById('cardModal').classList.remove('show'); }
 
 async function toggleLike(id, el, fromModal = false) {
-  if (!currentUser) { toast('請先登入才能收藏', 'info'); return; }
+  if (!currentUser) { toast('請先登入才能按讚', 'info'); return; }
   const isLiked = likedPostIds.has(id);
   const post = allPosts.find(p => p.id === id);
   if (isLiked) {
@@ -896,16 +977,42 @@ async function toggleLike(id, el, fromModal = false) {
   const cardEl = document.getElementById('like-' + id);
   if (cardEl) {
     cardEl.classList.toggle('liked', newLiked);
-    cardEl.innerHTML = `<i class="fas fa-heart" style="font-size:11px"></i>${post?.like_count || 0}`;
+    cardEl.innerHTML = `<i class="${newLiked ? 'fas' : 'far'} fa-heart" style="font-size:11px"></i>${post?.like_count || 0}`;
   }
   // update modal
   if (fromModal) {
     const ml = document.getElementById('mLike');
-    if (ml) ml.classList.toggle('liked', newLiked);
-    const mc = document.getElementById('mLikeCount');
-    if (mc) mc.textContent = post?.like_count || 0;
+    if (ml) { ml.classList.toggle('liked', newLiked); ml.innerHTML = `<i class="${newLiked ? 'fas' : 'far'} fa-heart"></i><span id="mLikeCount">${post?.like_count || 0}</span> 按讚`; }
   }
-  toast(newLiked ? '已加入收藏' : '已取消收藏', 'success');
+  toast(newLiked ? '❤️ 已按讚' : '取消按讚', newLiked ? 'success' : 'info');
+}
+
+async function toggleBookmark(id, fromModal = false) {
+  if (!currentUser) { toast('請先登入才能收藏', 'info'); return; }
+  const isBookmarked = bookmarkedPostIds.has(id);
+  const post = allPosts.find(p => p.id === id);
+  if (isBookmarked) {
+    await db.from('bookmarks').delete().eq('post_id', id).eq('user_id', currentUser.id);
+    bookmarkedPostIds.delete(id);
+    if (post) post.bookmark_count = Math.max((post.bookmark_count || 1) - 1, 0);
+  } else {
+    await db.from('bookmarks').insert({ post_id: id, user_id: currentUser.id });
+    bookmarkedPostIds.add(id);
+    if (post) post.bookmark_count = (post.bookmark_count || 0) + 1;
+  }
+  const newBkm = !isBookmarked;
+  // update card
+  const cardEl = document.getElementById('bkm-' + id);
+  if (cardEl) {
+    cardEl.classList.toggle('bookmarked', newBkm);
+    cardEl.innerHTML = `<i class="${newBkm ? 'fas' : 'far'} fa-bookmark" style="font-size:11px"></i>${post?.bookmark_count || 0}`;
+  }
+  // update modal
+  if (fromModal) {
+    const mb = document.getElementById('mBkm');
+    if (mb) { mb.classList.toggle('bookmarked', newBkm); mb.innerHTML = `<i class="${newBkm ? 'fas' : 'far'} fa-bookmark"></i><span id="mBkmCount">${post?.bookmark_count || 0}</span> 收藏`; }
+  }
+  toast(newBkm ? '🔖 已加入收藏' : '取消收藏', newBkm ? 'success' : 'info');
 }
 
 async function submitComment(postId) {
@@ -942,24 +1049,14 @@ function filterCards(v) { searchQuery = v; renderCards(); }
 function sortCards(s, el) {
   currentSort = s;
   document.querySelectorAll('.sort-btn').forEach(b => b.classList.remove('active'));
-  el.classList.add('active');
+  if (el) el.classList.add('active');
   loadPosts();
 }
 
 // =============================================
 // STATS
 // =============================================
-async function loadStats() {
-  const [posts, members, views] = await Promise.all([
-    db.from('posts').select('id', { count: 'exact' }).eq('status', 'approved'),
-    db.from('profiles').select('id', { count: 'exact' }),
-    db.from('posts').select('view_count').eq('status', 'approved'),
-  ]);
-  document.getElementById('statPosts').textContent = posts.count || 0;
-  document.getElementById('statMembers').textContent = members.count || 0;
-  const total = (views.data || []).reduce((s, p) => s + (p.view_count || 0), 0);
-  document.getElementById('statViews').textContent = total.toLocaleString();
-}
+// loadStats removed — stats section replaced by AI links
 
 // =============================================
 // RANK
@@ -1132,7 +1229,7 @@ async function submitPost() {
   const payload = {
     user_id: currentUser.id,
     title,
-    tool: document.getElementById('postTool').value,
+    tool: getSelectedTool(),
     category: document.getElementById('postCategory').value,
     tags: uploadTags,
     prompt,
@@ -1197,44 +1294,218 @@ function resetUpload() {
 // =============================================
 // PROFILE
 // =============================================
+
+// 預設顏色大頭貼選項
+const AVATAR_PRESETS = [
+  { bg: 'linear-gradient(135deg,#c9a84c,#8b6914)', emoji: '' },
+  { bg: 'linear-gradient(135deg,#2980b9,#1a5276)', emoji: '' },
+  { bg: 'linear-gradient(135deg,#27ae60,#1a6b33)', emoji: '' },
+  { bg: 'linear-gradient(135deg,#8e44ad,#5b2c6f)', emoji: '' },
+  { bg: 'linear-gradient(135deg,#e74c3c,#922b21)', emoji: '' },
+  { bg: 'linear-gradient(135deg,#16a085,#0e6655)', emoji: '' },
+  { bg: 'linear-gradient(135deg,#d35400,#873600)', emoji: '' },
+  { bg: 'linear-gradient(135deg,#2c3e50,#1a252f)', emoji: '' },
+];
+
+function getAvatarStyle() {
+  if (currentProfile?.avatar_url?.startsWith('preset:')) {
+    const idx = parseInt(currentProfile.avatar_url.replace('preset:',''));
+    return AVATAR_PRESETS[idx]?.bg || AVATAR_PRESETS[0].bg;
+  }
+  return 'linear-gradient(135deg,var(--gold),#8b6914)';
+}
+
+function getAvatarContent() {
+  if (currentProfile?.avatar_url?.startsWith('http')) {
+    return `<img src="${currentProfile.avatar_url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
+  }
+  return (currentProfile?.name || currentUser.email).slice(0,1);
+}
+
 async function renderProfile() {
   if (!currentUser) { nav('login'); return; }
   const { data: myPosts } = await db.from('posts').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: false });
   const posts = myPosts || [];
   const totalViews = posts.reduce((s, p) => s + (p.view_count || 0), 0);
   const totalLikes = posts.reduce((s, p) => s + (p.like_count || 0), 0);
-  const initial = (currentProfile?.name || currentUser.email).slice(0, 1);
+  const totalBookmarks = posts.reduce((s, p) => s + (p.bookmark_count || 0), 0);
+  const avatarStyle = getAvatarStyle();
+  const avatarContent = getAvatarContent();
+  const isImageAvatar = currentProfile?.avatar_url?.startsWith('http');
+
   document.getElementById('profileContent').innerHTML = `
     <div class="profile-header">
-      <div class="profile-avatar">${initial}</div>
+      <div class="profile-avatar-wrap" onclick="toggleEditPanel()">
+        <div class="profile-avatar" id="mainAvatar" style="background:${avatarStyle}">
+          ${avatarContent}
+        </div>
+        <div class="avatar-overlay"><i class="fas fa-pen"></i></div>
+      </div>
       <div class="profile-info">
-        <h2>${currentProfile?.name || '館員'}</h2>
+        <h2 id="profileNameDisplay">${currentProfile?.name || '館員'}</h2>
         <p>${currentUser.email} · ${currentProfile?.role === 'admin' ? '管理員' : '館員'}</p>
         <div class="profile-stats">
           <div><div class="profile-stat-num">${posts.filter(p => p.status === 'approved').length}</div><div class="profile-stat-label">已上架</div></div>
           <div><div class="profile-stat-num">${posts.filter(p => p.status === 'pending').length}</div><div class="profile-stat-label">審核中</div></div>
           <div><div class="profile-stat-num">${totalViews}</div><div class="profile-stat-label">總瀏覽</div></div>
-          <div><div class="profile-stat-num">${totalLikes}</div><div class="profile-stat-label">總收藏</div></div>
+          <div><div class="profile-stat-num">${totalLikes}</div><div class="profile-stat-label">總按讚</div></div>
+          <div><div class="profile-stat-num">${totalBookmarks}</div><div class="profile-stat-label">總收藏</div></div>
         </div>
       </div>
+      <button class="btn btn-outline btn-sm" style="margin-left:auto;align-self:flex-start" onclick="toggleEditPanel()">
+        <i class="fas fa-pen"></i>編輯資料
+      </button>
     </div>
-    <h3 style="margin-bottom:1rem;font-size:.95rem;color:var(--text2)">我的分享</h3>
-    ${posts.length === 0 ? '<div class="empty-state"><i class="fas fa-pen-to-square"></i><p>尚未分享任何提示詞</p></div>' :
-    `<div class="cards-grid">${posts.map(p => `
-      <div class="card" onclick="openPost('${p.id}')">
-        <div class="card-tags">
-          <span class="tag ai">${p.tool || 'AI'}</span>
-          <span class="tag">${p.category || ''}</span>
-          <span class="status-badge ${p.status === 'pending' ? 'status-pending' : p.status === 'approved' ? 'status-approved' : 'status-rejected'}" style="margin-left:auto">${p.status === 'pending' ? '審核中' : p.status === 'approved' ? '已上架' : '已拒絕'}</span>
-        </div>
-        <div class="card-title">${p.title}</div>
-        <div class="card-meta" style="margin-top:8px">
-          <div class="card-stats">
-            <span class="card-stat"><i class="fas fa-eye" style="font-size:11px"></i>${p.view_count || 0}</span>
-            <span class="card-stat"><i class="fas fa-heart" style="font-size:11px"></i>${p.like_count || 0}</span>
+
+    <!-- 編輯面板（預設隱藏）-->
+    <div class="edit-panel" id="editPanel" style="display:none">
+      <h3><i class="fas fa-user-pen"></i>編輯個人資料</h3>
+
+      <div class="form-group">
+        <label class="form-label">顯示名稱</label>
+        <input type="text" class="form-input" id="editName"
+          value="${currentProfile?.name || ''}" placeholder="你的名字">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">大頭貼</label>
+        <div style="display:flex;align-items:center;gap:16px;margin-bottom:10px">
+          <div id="previewAvatar" class="profile-avatar" style="background:${avatarStyle};flex-shrink:0">
+            ${avatarContent}
+          </div>
+          <div style="font-size:.82rem;color:var(--text3);line-height:1.7">
+            選擇下方顏色，或上傳自訂圖片<br>
+            <span style="font-size:.75rem">建議尺寸：200×200px 以上</span>
           </div>
         </div>
-      </div>`).join('')}</div>`}`;
+
+        <div class="avatar-picker" id="avatarPicker">
+          ${AVATAR_PRESETS.map((p, i) => `
+            <div class="avatar-option ${currentProfile?.avatar_url === 'preset:'+i ? 'selected' : ''}"
+              style="background:${p.bg}"
+              onclick="selectPresetAvatar(${i})"
+              title="顏色 ${i+1}">
+            </div>`).join('')}
+          <label class="avatar-upload-btn" title="上傳自訂圖片">
+            <i class="fas fa-camera"></i>
+            <input type="file" accept="image/*" style="display:none" onchange="uploadAvatarImage(this.files[0])">
+          </label>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1rem">
+        <button class="btn btn-outline btn-sm" onclick="toggleEditPanel()">取消</button>
+        <button class="btn btn-primary btn-sm" onclick="saveProfile()">
+          <i class="fas fa-check"></i>儲存變更
+        </button>
+      </div>
+    </div>
+
+    <h3 style="margin-bottom:1rem;font-size:.95rem;color:var(--text2)">我的分享</h3>
+    ${posts.length === 0
+      ? '<div class="empty-state"><i class="fas fa-pen-to-square"></i><p>尚未分享任何提示詞</p></div>'
+      : `<div class="cards-grid">${posts.map(p => `
+        <div class="card" onclick="openPost('${p.id}')">
+          <div class="card-tags">
+            <span class="tag ai">${p.tool || 'AI'}</span>
+            <span class="tag">${p.category || ''}</span>
+            <span class="status-badge ${p.status === 'pending' ? 'status-pending' : p.status === 'approved' ? 'status-approved' : 'status-rejected'}" style="margin-left:auto">${p.status === 'pending' ? '審核中' : p.status === 'approved' ? '已上架' : '已拒絕'}</span>
+          </div>
+          <div class="card-title">${p.title}</div>
+          <div class="card-meta" style="margin-top:8px">
+            <div class="card-stats">
+              <span class="card-stat"><i class="fas fa-eye" style="font-size:11px"></i>${p.view_count || 0}</span>
+              <span class="card-stat"><i class="fas fa-heart" style="font-size:11px"></i>${p.like_count || 0}</span>
+            </div>
+          </div>
+        </div>`).join('')}</div>`}`;
+}
+
+function toggleEditPanel() {
+  const panel = document.getElementById('editPanel');
+  if (!panel) return;
+  panel.style.display = panel.style.display === 'none' ? '' : 'none';
+}
+
+function selectPresetAvatar(idx) {
+  // Update selection UI
+  document.querySelectorAll('.avatar-option').forEach(el => el.classList.remove('selected'));
+  document.querySelectorAll('.avatar-option')[idx]?.classList.add('selected');
+  // Update preview
+  const bg = AVATAR_PRESETS[idx].bg;
+  const preview = document.getElementById('previewAvatar');
+  if (preview) {
+    preview.style.background = bg;
+    preview.innerHTML = (currentProfile?.name || currentUser.email).slice(0,1);
+  }
+  // Store pending choice
+  window._pendingAvatarUrl = 'preset:' + idx;
+}
+
+async function uploadAvatarImage(file) {
+  if (!file) return;
+  if (file.size > 5 * 1024 * 1024) { toast('圖片不能超過 5MB', 'error'); return; }
+  toast('上傳中...', 'info');
+
+  // Convert to WebP
+  let blob = file;
+  try {
+    blob = await new Promise((res, rej) => {
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      img.onload = () => {
+        // Crop to square
+        const size = Math.min(img.width, img.height);
+        const c = document.createElement('canvas');
+        c.width = 200; c.height = 200;
+        c.getContext('2d').drawImage(img,
+          (img.width - size)/2, (img.height - size)/2, size, size, 0, 0, 200, 200);
+        c.toBlob(b => { URL.revokeObjectURL(url); b ? res(b) : rej(); }, 'image/webp', 0.9);
+      };
+      img.onerror = rej; img.src = url;
+    });
+  } catch(e) { /* use original */ }
+
+  const path = `avatars/${currentUser.id}_${Date.now()}.webp`;
+  const { data, error } = await db.storage.from('attachments').upload(path, blob, {
+    contentType: 'image/webp', upsert: true
+  });
+  if (error) { toast('上傳失敗：' + error.message, 'error'); return; }
+
+  const { data: pub } = db.storage.from('attachments').getPublicUrl(path);
+  window._pendingAvatarUrl = pub.publicUrl;
+
+  // Update preview
+  const preview = document.getElementById('previewAvatar');
+  if (preview) {
+    preview.style.background = 'none';
+    preview.innerHTML = `<img src="${pub.publicUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
+  }
+  document.querySelectorAll('.avatar-option').forEach(el => el.classList.remove('selected'));
+  toast('圖片上傳成功', 'success');
+}
+
+async function saveProfile() {
+  const newName = document.getElementById('editName')?.value?.trim();
+  if (!newName) { toast('名稱不能為空', 'error'); return; }
+
+  const updates = { name: newName };
+  if (window._pendingAvatarUrl !== undefined) {
+    updates.avatar_url = window._pendingAvatarUrl;
+  }
+
+  const { error } = await db.from('profiles').update(updates).eq('id', currentUser.id);
+  if (error) { toast('儲存失敗：' + error.message, 'error'); return; }
+
+  // Update local state
+  currentProfile = { ...currentProfile, ...updates };
+  window._pendingAvatarUrl = undefined;
+
+  toast('個人資料已更新 ✓', 'success');
+
+  // Refresh UI
+  updateUserUI();
+  renderProfile();
 }
 
 // =============================================
@@ -1248,6 +1519,29 @@ function toast(msg, type = 'info') {
   d.innerHTML = `<i class="fas ${icon}" style="color:${type === 'success' ? '#27ae60' : type === 'error' ? '#e74c3c' : 'var(--gold)'}"></i>${msg}`;
   c.appendChild(d);
   setTimeout(() => { d.style.animation = 'slide-in .3s ease reverse'; setTimeout(() => d.remove(), 300); }, 2800);
+}
+
+// =============================================
+// TOOL SELECT — 自行輸入
+// =============================================
+function handleToolChange(val) {
+  const custom = document.getElementById('postToolCustom');
+  if (val === '其他（自行輸入）') {
+    custom.style.display = '';
+    custom.focus();
+  } else {
+    custom.style.display = 'none';
+    custom.value = '';
+  }
+}
+
+function getSelectedTool() {
+  const sel = document.getElementById('postTool').value;
+  if (sel === '其他（自行輸入）') {
+    const custom = document.getElementById('postToolCustom').value.trim();
+    return custom || '其他';
+  }
+  return sel;
 }
 
 // =============================================
@@ -1286,11 +1580,18 @@ document.addEventListener('click', e => {
   if (!e.target.closest('.dropdown')) document.querySelectorAll('.dropdown').forEach(d => d.classList.remove('open'));
 });
 
+// 回到頂部：監聽滾動
+window.addEventListener('scroll', () => {
+  const btn = document.getElementById('backToTop');
+  if (!btn) return;
+  if (window.scrollY > 300) btn.classList.add('visible');
+  else btn.classList.remove('visible');
+}, { passive: true });
+
 document.addEventListener('DOMContentLoaded', async () => {
   initTheme();
   await initAuth();
   loadPosts();
-  loadStats();
 });
 </script>
 </body>
