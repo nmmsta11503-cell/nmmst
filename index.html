@@ -18,6 +18,59 @@
   --radius:8px;--radius2:14px;
 }
 body{font-family:'Noto Sans TC',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+/* ── 淺色模式 ── */
+[data-theme=light]{
+  --bg:#f5f2ec;--bg2:#ffffff;--bg3:#f0ece3;--bg4:#e5dfd3;
+  --gold:#9a6f1e;--gold2:#7a5510;--gold3:#5a3c08;
+  --text:#1a1714;--text2:#4a4540;--text3:#8a8078;
+  --border:#d8d0c0;--border2:#c8bfac;
+}
+/* 切換動畫 */
+body,header,.card,.modal,.form-section,.admin-card,.login-wrap,
+.lb-item,.prompt-block,.upload-zone,.uploaded-file,
+.dropdown-menu,.toast-item,.comment-item,.tags-input-area,
+.editor-content,.editor-toolbar{
+  transition:background .25s,color .25s,border-color .25s;
+}
+[data-theme=light] .card:hover{box-shadow:0 8px 28px rgba(0,0,0,.12)}
+[data-theme=light] .overlay{background:rgba(0,0,0,.55)}
+[data-theme=light] .avatar,[data-theme=light] .profile-avatar{background:linear-gradient(135deg,#9a6f1e,#c9a84c);color:#fff}
+[data-theme=light] .pop-bar-fill,[data-theme=light] .processing-fill{background:linear-gradient(90deg,#9a6f1e,#c9a84c)}
+[data-theme=light] .tag.ai{background:rgba(154,111,30,.1);color:#7a5510;border-color:rgba(154,111,30,.25)}
+[data-theme=light] .tag-chip{background:rgba(154,111,30,.1);border-color:rgba(154,111,30,.25);color:#7a5510}
+[data-theme=light] .toast-item{background:#fff;box-shadow:0 4px 20px rgba(0,0,0,.15)}
+[data-theme=light] .filter-chip.active,[data-theme=light] .login-tab.active{background:#9a6f1e;color:#fff}
+[data-theme=light] .btn-primary{background:#9a6f1e;color:#fff}
+[data-theme=light] .btn-primary:hover{background:#7a5510}
+[data-theme=light] h1,[data-theme=light] .hero h1,[data-theme=light] .modal-header h2,
+[data-theme=light] .logo-text,[data-theme=light] .form-section h3{color:#7a5510}
+[data-theme=light] .stat-num,[data-theme=light] .lb-views-num,[data-theme=light] .profile-stat-num{color:#9a6f1e}
+[data-theme=light] .pending-badge{background:#9a6f1e;color:#fff}
+[data-theme=light] .copy-prompt-btn{background:rgba(154,111,30,.08);border-color:rgba(154,111,30,.2);color:#9a6f1e}
+[data-theme=light] .editor-content{background:#faf8f4}
+[data-theme=light] ::-webkit-scrollbar-thumb{background:#c8bfac}
+[data-theme=light] .admin-tab.active{color:#9a6f1e;border-bottom-color:#9a6f1e}
+[data-theme=light] .sort-btn.active,[data-theme=light] .sort-btn:hover{border-color:#9a6f1e;color:#9a6f1e}
+[data-theme=light] .stat-item:hover{background:#f0ece3;color:#9a6f1e}
+[data-theme=light] .nav-btn.active{background:#f0ece3;color:#9a6f1e}
+[data-theme=light] .card-stat.liked,[data-theme=light] .stat-item.liked{color:#9a6f1e}
+[data-theme=light] .convert-badge{background:rgba(39,174,96,.08);color:#1a6b33}
+[data-theme=light] .lb-rank.r1{color:#b8860b}
+[data-theme=light] .lb-rank.r2{color:#708090}
+[data-theme=light] .lb-rank.r3{color:#8b4513}
+[data-theme=light] .logo-sub{color:#8a8078}
+[data-theme=light] .hero p{color:#4a4540}
+
+/* ── 模式切換按鈕 ── */
+.theme-toggle{
+  width:34px;height:34px;border-radius:50%;
+  background:var(--bg3);border:1px solid var(--border2);
+  color:var(--text2);cursor:pointer;font-size:15px;
+  display:flex;align-items:center;justify-content:center;
+  transition:all .2s;flex-shrink:0;margin-left:4px;
+}
+.theme-toggle:hover{border-color:var(--gold);color:var(--gold)}
+
 h1,h2,h3{font-family:'Noto Serif TC',serif}
 .app{display:flex;flex-direction:column;min-height:100vh}
 
@@ -291,6 +344,9 @@ h1,h2,h3{font-family:'Noto Serif TC',serif}
   <div class="user-area" id="userArea">
     <button class="btn btn-outline" onclick="nav('login')"><i class="fas fa-right-to-bracket"></i>登入</button>
   </div>
+  <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" title="切換深/淺色模式">
+    <i class="fas fa-moon" id="themeIcon"></i>
+  </button>
 </header>
 
 <!-- MAIN -->
@@ -1195,6 +1251,35 @@ function toast(msg, type = 'info') {
 }
 
 // =============================================
+// THEME TOGGLE
+// =============================================
+function toggleTheme() {
+  const html = document.documentElement;
+  const icon = document.getElementById('themeIcon');
+  const isLight = html.getAttribute('data-theme') === 'light';
+  if (isLight) {
+    html.removeAttribute('data-theme');
+    icon.className = 'fas fa-moon';
+    localStorage.setItem('theme', 'dark');
+  } else {
+    html.setAttribute('data-theme', 'light');
+    icon.className = 'fas fa-sun';
+    localStorage.setItem('theme', 'light');
+  }
+}
+
+function initTheme() {
+  const saved = localStorage.getItem('theme');
+  const preferLight = window.matchMedia('(prefers-color-scheme: light)').matches;
+  const useLight = saved === 'light' || (!saved && preferLight);
+  if (useLight) {
+    document.documentElement.setAttribute('data-theme', 'light');
+    const icon = document.getElementById('themeIcon');
+    if (icon) icon.className = 'fas fa-sun';
+  }
+}
+
+// =============================================
 // INIT
 // =============================================
 document.addEventListener('click', e => {
@@ -1202,6 +1287,7 @@ document.addEventListener('click', e => {
 });
 
 document.addEventListener('DOMContentLoaded', async () => {
+  initTheme();
   await initAuth();
   loadPosts();
   loadStats();
