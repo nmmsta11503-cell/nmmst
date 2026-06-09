@@ -75,9 +75,9 @@ h1,h2,h3{font-family:'Noto Serif TC',serif}
 .app{display:flex;flex-direction:column;min-height:100vh}
 
 /* HEADER */
-.header{background:var(--bg2);border-bottom:1px solid var(--border);padding:0 1.25rem;display:flex;align-items:center;gap:1.25rem;height:72px;position:sticky;top:0;z-index:100;overflow:hidden}
-.header-right{display:flex;align-items:center;gap:6px;flex-shrink:0}
-.logo{display:flex;align-items:center;gap:8px;cursor:pointer;text-decoration:none;flex-shrink:0;min-width:0}
+.header{background:var(--bg2);border-bottom:1px solid var(--border);padding:0 1rem;display:flex;align-items:center;height:68px;position:sticky;top:0;z-index:100;overflow:hidden;gap:0}
+.header-right{display:flex;align-items:center;gap:6px;flex-shrink:0;margin-left:auto}
+.logo{display:flex;align-items:center;gap:8px;cursor:pointer;text-decoration:none;flex-shrink:0;min-width:0;margin-right:auto}
 .logo-img{height:52px;width:auto;object-fit:contain;display:block;flex-shrink:0;max-width:180px}
 .logo-divider{width:1px;height:22px;background:var(--border2);flex-shrink:0}
 .logo-text-wrap{display:flex;flex-direction:column;justify-content:center;min-width:0}
@@ -90,7 +90,7 @@ h1,h2,h3{font-family:'Noto Serif TC',serif}
 .nav-btn i{font-size:12px}
 .pending-badge{background:var(--gold);color:#0f0e0d;font-size:10px;padding:1px 5px;border-radius:8px;margin-left:2px;font-weight:700}
 .user-area{display:flex;align-items:center;gap:6px;flex-shrink:0}
-.avatar{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--gold),#8b6914);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#0f0e0d;cursor:pointer;border:2px solid var(--gold);flex-shrink:0;overflow:hidden}
+.avatar{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,var(--gold),#8b6914);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#0f0e0d;cursor:pointer;border:2px solid var(--gold);flex-shrink:0;overflow:hidden;min-width:34px}
 /* 漢堡選單 */
 .hamburger{
   display:none;flex-direction:column;justify-content:center;gap:5px;
@@ -125,11 +125,13 @@ h1,h2,h3{font-family:'Noto Serif TC',serif}
   .logo-divider{display:none}
   .nav{display:none!important}
   .hamburger{display:flex!important}
-  .header{gap:.5rem;padding:0 .75rem}
-  .user-area .btn span{display:none}
-  .user-area .btn{padding:7px 10px;min-width:unset}
-  /* theme-toggle 跟著漢堡一起，但 theme 不能跟漢堡在同一個群組 */
-  .header-right{display:flex;align-items:center;gap:6px}
+  .header{padding:0 .75rem}
+  /* 手機版 user-area：只保留 avatar，隱藏新增分享按鈕文字 */
+  .user-area .btn-primary span{display:none}
+  .user-area .btn-primary{padding:0;width:34px;height:34px;border-radius:50%;justify-content:center}
+  .user-area .btn-primary i{margin:0}
+  /* avatar 大小 */
+  .user-area .avatar{width:32px;height:32px}
 }
 .btn{padding:7px 18px;border-radius:var(--radius);font-size:13px;font-family:'Noto Sans TC',sans-serif;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:6px;border:none}
 .btn-primary{background:var(--gold);color:#0f0e0d;font-weight:700}
@@ -399,7 +401,7 @@ h1,h2,h3{font-family:'Noto Serif TC',serif}
 
 /* PROFILE PAGE */
 .profile-header{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius2);padding:1.5rem;margin-bottom:1.5rem;display:flex;align-items:center;gap:1.5rem}
-.profile-avatar{width:72px;height:72px;border-radius:50%;background:linear-gradient(135deg,var(--gold),#8b6914);display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:700;color:#0f0e0d;border:3px solid var(--gold)}
+.profile-avatar{width:72px;height:72px;border-radius:50%;background:linear-gradient(135deg,var(--gold),#8b6914);display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:700;color:#0f0e0d;border:3px solid var(--gold);overflow:hidden}
 .profile-info h2{font-size:1.2rem;color:var(--text);margin-bottom:4px}
 .profile-avatar-wrap{position:relative;flex-shrink:0;cursor:pointer}
 .profile-avatar-wrap:hover .avatar-overlay{opacity:1}
@@ -1032,7 +1034,7 @@ function updateUserUI() {
     ua.innerHTML = `
       <button class="btn btn-primary" onclick="nav('upload')"><i class="fas fa-plus"></i><span>新增分享</span></button>
       <div class="dropdown" id="userDropdown">
-        <div class="avatar" style="background:${avatarStyle};overflow:hidden" onclick="document.getElementById('userDropdown').classList.toggle('open')">${avatarContent}</div>
+        <div class="avatar" style="background:${avatarStyle}" onclick="document.getElementById('userDropdown').classList.toggle('open')">${avatarContent}</div>
         <div class="dropdown-menu">
           <button class="dropdown-item" onclick="nav('profile');document.getElementById('userDropdown').classList.remove('open')"><i class="fas fa-user"></i>${name}</button>
           <div class="dropdown-sep"></div>
@@ -1063,7 +1065,7 @@ function getAvatarStyle() {
 }
 function getAvatarContent() {
   if (currentProfile?.avatar_url?.startsWith('http')) {
-    return `<img src="${currentProfile.avatar_url}" style="width:100%;height:100%;object-fit:cover">`;
+    return `<img src="${currentProfile.avatar_url}" style="width:100%;height:100%;object-fit:cover;display:block" onerror="this.style.display='none'">`;
   }
   return (currentProfile?.name || currentUser?.email || '?').slice(0, 1);
 }
@@ -2044,8 +2046,18 @@ let _aiLinksCache = null;
 async function loadAiLinks() {
   try {
     const { data, error } = await db.from('ai_links').select('*').order('sort_order');
-    if (error || !data) { _aiLinksCache = FALLBACK_AI_LINKS; return _aiLinksCache; }
-    _aiLinksCache = data.length > 0 ? data : FALLBACK_AI_LINKS;
+    if (error) { _aiLinksCache = FALLBACK_AI_LINKS; return _aiLinksCache; }
+    if (data && data.length > 0) { _aiLinksCache = data; return _aiLinksCache; }
+    // 資料庫空的：如果是管理員，自動寫入預設連結
+    if (currentProfile?.role === 'admin') {
+      for (const l of FALLBACK_AI_LINKS) {
+        await db.from('ai_links').insert({ name: l.name, url: l.url, logo: l.logo, sort_order: l.sort_order });
+      }
+      const { data: fresh } = await db.from('ai_links').select('*').order('sort_order');
+      _aiLinksCache = fresh || FALLBACK_AI_LINKS;
+    } else {
+      _aiLinksCache = FALLBACK_AI_LINKS;
+    }
     return _aiLinksCache;
   } catch(e) { _aiLinksCache = FALLBACK_AI_LINKS; return _aiLinksCache; }
 }
@@ -2065,14 +2077,21 @@ async function renderAiLinks() {
       <a class="ai-link" href="${l.url}" target="_blank" rel="noopener" onclick="event.stopPropagation()">
         ${l.logo ? `<img src="${l.logo}" alt="${l.name}" width="20" height="20" onerror="this.style.display='none'">` : `<span style="width:20px;height:20px;border-radius:4px;background:linear-gradient(135deg,var(--gold),#8b6914);display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#0f0e0d;flex-shrink:0">${l.name.slice(0,1)}</span>`}
         <span>${l.name}</span>
-        ${isAdmin ? `<button class="rm-ai" onclick="event.preventDefault();event.stopPropagation();removeAiLink('${l.id}')"><i class="fas fa-xmark"></i></button>` : ''}
+        ${isAdmin ? `<button class="rm-ai" onclick="event.preventDefault();event.stopPropagation();removeAiLink('${l.id}','${l.name}')"><i class="fas fa-xmark"></i></button>` : ''}
       </a>`).join('') +
       (isAdmin ? `<button class="ai-link-manage-btn" onclick="openAiMgr()"><i class="fas fa-plus"></i> 新增</button>` : '');
   } catch(e) { console.warn('renderAiLinks:', e); }
 }
-async function removeAiLink(id) {
-  if (!id || id === 'null') { toast('此為預設連結，請先在 Supabase 執行 create_ai_links.sql 後再管理', 'info'); return; }
-  await db.from('ai_links').delete().eq('id', id);
+async function removeAiLink(id, name) {
+  if (id && id !== 'null') {
+    await db.from('ai_links').delete().eq('id', id);
+  } else {
+    // fallback 連結沒有 DB id，從快取移除並重設 localStorage 備用
+    _aiLinksCache = (_aiLinksCache || []).filter(l => l.name !== name);
+    localStorage.setItem('aiLinksOverride', JSON.stringify(_aiLinksCache));
+    await renderAiLinks();
+    return;
+  }
   _aiLinksCache = null;
   await renderAiLinks();
 }
@@ -2091,7 +2110,7 @@ async function renderAiMgrList() {
       <i class="fas fa-grip-vertical" style="color:var(--text3);cursor:grab;font-size:13px;flex-shrink:0"></i>
       ${l.logo ? `<img class="ai-mgr-logo" src="${l.logo}" alt="${l.name}" onerror="this.style.display='none'">` : `<div class="ai-mgr-logo-placeholder">${l.name.slice(0,1)}</div>`}
       <div style="flex:1;min-width:0"><div style="font-size:.88rem;font-weight:600">${l.name}</div><div style="font-size:.75rem;color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${l.url}</div></div>
-      <button class="btn btn-danger btn-sm" onclick="removeAiLink('${l.id}');renderAiMgrList()"><i class="fas fa-trash"></i></button>
+      <button class="btn btn-danger btn-sm" onclick="removeAiLink('${l.id}','${l.name}');renderAiMgrList()"><i class="fas fa-trash"></i></button>
     </div>`).join('');
 }
 let _aiDragFrom = null;
