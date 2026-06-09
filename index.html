@@ -1408,17 +1408,18 @@ async function setPostStatus(id, status) {
   const title = post?.title || '此文章';
   const labels = { approved: ['✅','確認核准上架？',`「${title}」將公開顯示。`,'核准上架','btn-success'], rejected: ['🚫','確認拒絕？',`「${title}」將被拒絕。`,'確認拒絕','btn-danger'] };
   const l = labels[status];
-  if (l) showConfirm(l[0], l[1], l[2], l[3], l[4], async () => {
+  const doUpdate = async () => {
     const { error } = await authPatch('posts', `id=eq.${id}`, { status });
-    if (error) { toast('操作失敗：' + error.message, 'error'); return; }
-    toast(status==='approved' ? '✅ 已核准' : '🚫 已拒絕', status==='approved'?'success':'info');
+    if (error) {
+      console.error('setPostStatus error:', error);
+      toast('操作失敗：' + (error.message || JSON.stringify(error)), 'error');
+      return;
+    }
+    toast(status==='approved' ? '✅ 已核准上架' : '🚫 已拒絕', status==='approved'?'success':'info');
     loadAdminPosts(); loadPendingCount();
-  });
-  else {
-    const { error } = await authPatch('posts', `id=eq.${id}`, { status });
-    if (error) { toast('操作失敗', 'error'); return; }
-    loadAdminPosts(); loadPendingCount();
-  }
+  };
+  if (l) showConfirm(l[0], l[1], l[2], l[3], l[4], doUpdate);
+  else doUpdate();
 }
 
 function adminTab(tab, el) {
