@@ -91,26 +91,42 @@ h1,h2,h3{font-family:'Noto Serif TC',serif}
 .user-area{display:flex;align-items:center;gap:6px;flex-shrink:0}
 .avatar{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--gold),#8b6914);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#0f0e0d;cursor:pointer;border:2px solid var(--gold);flex-shrink:0;overflow:hidden}
 /* 漢堡選單 */
-.hamburger{display:none;flex-direction:column;justify-content:center;gap:5px;width:36px;height:36px;background:none;border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;padding:6px;flex-shrink:0}
+.hamburger{
+  display:none;flex-direction:column;justify-content:center;gap:5px;
+  width:36px;height:36px;background:none;border:1px solid var(--border);
+  border-radius:var(--radius);cursor:pointer;padding:7px;flex-shrink:0;
+}
 .hamburger span{display:block;height:2px;background:var(--text2);border-radius:2px;transition:all .25s}
 .hamburger.open span:nth-child(1){transform:translateY(7px) rotate(45deg)}
 .hamburger.open span:nth-child(2){opacity:0;transform:scaleX(0)}
 .hamburger.open span:nth-child(3){transform:translateY(-7px) rotate(-45deg)}
-.mobile-menu{display:none;position:fixed;top:72px;left:0;right:0;z-index:99;
-  background:var(--bg2);border-bottom:1px solid var(--border);
-  flex-direction:column;padding:.5rem .75rem .75rem;gap:4px;
-  box-shadow:0 8px 24px rgba(0,0,0,.3)}
+.mobile-menu{
+  display:none;position:fixed;top:72px;left:0;right:0;z-index:99;
+  background:var(--bg2);border-bottom:1px solid var(--border2);
+  flex-direction:column;padding:.5rem .75rem .8rem;gap:2px;
+  box-shadow:0 8px 24px rgba(0,0,0,.3);
+}
 .mobile-menu.open{display:flex}
-.mobile-menu .nav-btn{justify-content:flex-start;padding:10px 12px;font-size:14px;width:100%}
-.mobile-menu .nav-btn i{width:20px}
+.mobile-menu .nav-btn{
+  justify-content:flex-start;padding:11px 14px;
+  font-size:14px;width:100%;border-radius:var(--radius);
+}
+.mobile-menu .nav-btn i{width:22px;text-align:center}
+.mobile-menu-divider{height:1px;background:var(--border);margin:4px 0}
+/* 桌面版隱藏漢堡 */
+@media(min-width:641px){ .hamburger{display:none!important} .mobile-menu{display:none!important} }
+/* 手機版 */
 @media(max-width:640px){
   .logo-text-wrap{display:none}
   .logo-divider{display:none}
-  .nav{display:none}
+  .nav{display:none!important}
   .hamburger{display:flex}
-  .header{gap:.75rem;padding:0 .75rem}
+  .header{gap:.5rem;padding:0 .75rem}
   .user-area .btn span{display:none}
-  .user-area .btn{padding:7px 10px}
+  .user-area .btn{padding:7px 10px;min-width:unset}
+  /* theme toggle 和 hamburger 都保留，theme 在 hamburger 前 */
+  .theme-toggle{order:1}
+  .hamburger{order:2}
 }
 .btn{padding:7px 18px;border-radius:var(--radius);font-size:13px;font-family:'Noto Sans TC',sans-serif;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:6px;border:none}
 .btn-primary{background:var(--gold);color:#0f0e0d;font-weight:700}
@@ -629,7 +645,7 @@ h1,h2,h3{font-family:'Noto Serif TC',serif}
       </div>
       <div class="form-group">
         <label class="form-label">電子郵件</label>
-        <input type="email" class="form-input" id="loginEmail" placeholder="yourname@mail.nmmst.gov.tw" autocomplete="email">
+        <input type="email" class="form-input" id="loginEmail" placeholder="yourname@nmmst.gov.tw" autocomplete="email">
       </div>
       <div class="form-group">
         <label class="form-label">密碼</label>
@@ -848,10 +864,23 @@ async function getAuthDb() {
 // =============================================
 let _aiLinksCache = null;
 
+const FALLBACK_AI_LINKS = [
+  { id: null, name: 'ChatGPT', url: 'https://chatgpt.com', logo: 'https://upload.wikimedia.org/wikipedia/commons/0/04/ChatGPT_logo.svg', sort_order: 1 },
+  { id: null, name: 'Meta AI',  url: 'https://www.meta.ai', logo: '', sort_order: 2 },
+  { id: null, name: 'Gemini',  url: 'https://gemini.google.com', logo: 'https://upload.wikimedia.org/wikipedia/commons/8/8a/Google_Gemini_logo.svg', sort_order: 3 },
+  { id: null, name: 'Claude',  url: 'https://claude.ai', logo: '', sort_order: 4 },
+];
+
 async function loadAiLinks() {
-  const { data } = await db.from('ai_links').select('*').order('sort_order');
-  _aiLinksCache = data || [];
-  return _aiLinksCache;
+  try {
+    const { data, error } = await db.from('ai_links').select('*').order('sort_order');
+    if (error || !data) { _aiLinksCache = FALLBACK_AI_LINKS; return _aiLinksCache; }
+    _aiLinksCache = data.length > 0 ? data : FALLBACK_AI_LINKS;
+    return _aiLinksCache;
+  } catch(e) {
+    _aiLinksCache = FALLBACK_AI_LINKS;
+    return _aiLinksCache;
+  }
 }
 
 async function saveAiLinks(links) {
@@ -865,6 +894,7 @@ async function saveAiLinks(links) {
 }
 
 async function renderAiLinks() {
+  try {
   const container = document.getElementById('aiLinksContainer');
   if (!container) return;
   const links = await loadAiLinks();
@@ -879,6 +909,7 @@ async function renderAiLinks() {
       ${isAdmin ? `<button class="rm-ai" onclick="event.preventDefault();event.stopPropagation();removeAiLink('${l.id}')" title="移除"><i class="fas fa-xmark"></i></button>` : ''}
     </a>`).join('') +
     (isAdmin ? `<button class="ai-link-manage-btn" onclick="openAiMgr()"><i class="fas fa-plus"></i> 新增</button>` : '');
+  } catch(e) { console.warn('renderAiLinks error:', e); }
 }
 
 async function removeAiLink(id) {
@@ -2217,6 +2248,9 @@ function getSelectedTool() {
 function toggleMobileMenu() {
   const menu = document.getElementById('mobileMenu');
   const btn  = document.getElementById('hamburger');
+  // 動態對齊 header 高度
+  const headerH = document.querySelector('header')?.offsetHeight || 72;
+  menu.style.top = headerH + 'px';
   const open = menu.classList.toggle('open');
   btn.classList.toggle('open', open);
 }
