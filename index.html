@@ -205,7 +205,8 @@ h1,h2,h3{font-family:'Noto Serif TC',serif}
 .sort-btn:hover,.sort-btn.active{border-color:var(--gold);color:var(--gold)}
 
 /* CARDS GRID */
-.cards-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;align-items:start}
+.cards-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;align-items:start}
+@media(max-width:1024px){.cards-grid{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:600px){.cards-grid{grid-template-columns:1fr}}
 .card{break-inside:avoid;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius2);padding:1.2rem;margin-bottom:16px;cursor:pointer;transition:all .25s;position:relative}
 .card:hover{border-color:var(--gold);transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.4)}
