@@ -823,7 +823,7 @@ h1,h2,h3{font-family:'Noto Serif TC',serif}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script>
 // =============================================
-// CONFIG — 填入你的 Supabase 設定
+// CONFIG
 // =============================================
 const SUPABASE_URL = 'https://oqennxszrjjcwoulovse.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_82JqqtVTZxofUT5xMPuPYw_NCsr9ozg';
@@ -834,203 +834,57 @@ const SENSITIVE_WORDS = ['色情','裸露','情色','暴力','殺人','自殺','
 // =============================================
 const { createClient } = supabase;
 const db = createClient(SUPABASE_URL, SUPABASE_KEY, {
-  auth: {
-    autoRefreshToken: true,
-    persistSession: true,
-    detectSessionInUrl: true,
-    storage: window.localStorage,
-  },
+  auth: { autoRefreshToken: true, persistSession: true, detectSessionInUrl: true }
 });
 
-// sb_publishable_ key 無法直接作為 Bearer token 供 RLS 使用
-// 登入後用 session.access_token 建立第二個 client 供寫入操作
-let _authDb = null;
-
-async function getAuthDb() {
+// ── 直接用 fetch + JWT 執行寫入，完全繞過 supabase-js session 問題 ──
+async function getToken() {
   const { data: { session } } = await db.auth.getSession();
-  if (!session?.access_token) return db;
-  // 用使用者 JWT 建立 client，讓 RLS 能正確識別身份
-  _authDb = createClient(SUPABASE_URL, SUPABASE_KEY, {
-    auth: { autoRefreshToken: false, persistSession: false },
-    global: {
-      headers: { Authorization: `Bearer ${session.access_token}` }
-    }
+  return session?.access_token || null;
+}
+async function authPost(table, body) {
+  const token = await getToken();
+  if (!token) return { data: null, error: { message: '未登入' } };
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${token}`, 'Prefer': 'return=representation' },
+    body: JSON.stringify(body)
   });
-  return _authDb;
+  const data = await res.json().catch(() => null);
+  if (!res.ok) return { data: null, error: data || { message: res.statusText } };
+  return { data: Array.isArray(data) ? data[0] : data, error: null };
 }
-
-// =============================================
-// AI LINKS MANAGEMENT（Supabase 後端）
-// =============================================
-let _aiLinksCache = null;
-
-const FALLBACK_AI_LINKS = [
-  { id: null, name: 'ChatGPT', url: 'https://chatgpt.com', logo: 'https://upload.wikimedia.org/wikipedia/commons/0/04/ChatGPT_logo.svg', sort_order: 1 },
-  { id: null, name: 'Meta AI',  url: 'https://www.meta.ai', logo: '', sort_order: 2 },
-  { id: null, name: 'Gemini',  url: 'https://gemini.google.com', logo: 'https://upload.wikimedia.org/wikipedia/commons/8/8a/Google_Gemini_logo.svg', sort_order: 3 },
-  { id: null, name: 'Claude',  url: 'https://claude.ai', logo: '', sort_order: 4 },
-];
-
-async function loadAiLinks() {
-  try {
-    const { data, error } = await db.from('ai_links').select('*').order('sort_order');
-    if (error || !data) { _aiLinksCache = FALLBACK_AI_LINKS; return _aiLinksCache; }
-    _aiLinksCache = data.length > 0 ? data : FALLBACK_AI_LINKS;
-    return _aiLinksCache;
-  } catch(e) {
-    _aiLinksCache = FALLBACK_AI_LINKS;
-    return _aiLinksCache;
-  }
-}
-
-async function saveAiLinks(links) {
-  // 重新寫入 sort_order
-  for (let i = 0; i < links.length; i++) {
-    if (links[i].id) {
-      await authPatch('ai_links', `id=eq.${links[i].id}`, { sort_order: i + 1 });
-    }
-  }
-  _aiLinksCache = links;
-}
-
-async function renderAiLinks() {
-  try {
-  const container = document.getElementById('aiLinksContainer');
-  if (!container) return;
-  const links = await loadAiLinks();
-  const isAdmin = currentProfile?.role === 'admin';
-  container.innerHTML = links.map((l, i) => `
-    <a class="ai-link" href="${l.url}" target="_blank" rel="noopener" onclick="event.stopPropagation()">
-      ${l.logo
-        ? `<img src="${l.logo}" alt="${l.name}" width="20" height="20" onerror="this.style.display='none'">`
-        : `<span style="width:20px;height:20px;border-radius:4px;background:linear-gradient(135deg,var(--gold),#8b6914);display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#0f0e0d;flex-shrink:0">${l.name.slice(0,1)}</span>`
-      }
-      <span>${l.name}</span>
-      ${isAdmin ? `<button class="rm-ai" onclick="event.preventDefault();event.stopPropagation();removeAiLink('${l.id}')" title="移除"><i class="fas fa-xmark"></i></button>` : ''}
-    </a>`).join('') +
-    (isAdmin ? `<button class="ai-link-manage-btn" onclick="openAiMgr()"><i class="fas fa-plus"></i> 新增</button>` : '');
-  } catch(e) { console.warn('renderAiLinks error:', e); }
-}
-
-async function removeAiLink(id) {
-  await authDelete('ai_links', `id=eq.${id}`);
-  await renderAiLinks();
-}
-
-async function openAiMgr() {
-  document.getElementById('aiMgrModal').classList.add('show');
-  await renderAiMgrList();
-}
-
-function renderAiMgrList() {
-  const links = loadAiLinks();
-  const el = document.getElementById('aiMgrList');
-  if (!el) return;
-  if (!links.length) { el.innerHTML = '<div style="font-size:.82rem;color:var(--text3);padding:.5rem 0">尚無連結</div>'; return; }
-  el.innerHTML = `<div style="font-size:.78rem;color:var(--text3);margin-bottom:6px"><i class="fas fa-grip-vertical" style="margin-right:4px"></i>拖曳左側圖示可調整順序</div>` +
-    links.map((l, i) => `
-    <div class="ai-mgr-row" draggable="true"
-      ondragstart="aiDragStart(event,${i})"
-      ondragover="aiDragOver(event)"
-      ondrop="aiDrop(event,${i})"
-      ondragend="aiDragEnd()"
-      id="aiRow${i}" style="cursor:default">
-      <i class="fas fa-grip-vertical" style="color:var(--text3);cursor:grab;font-size:13px;flex-shrink:0"></i>
-      ${l.logo
-        ? `<img class="ai-mgr-logo" src="${l.logo}" alt="${l.name}" onerror="this.style.display='none'">`
-        : `<div class="ai-mgr-logo-placeholder">${l.name.slice(0,1)}</div>`
-      }
-      <div style="flex:1;min-width:0">
-        <div style="font-size:.88rem;font-weight:600">${l.name}</div>
-        <div style="font-size:.75rem;color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${l.url}</div>
-      </div>
-      <button class="btn btn-danger btn-sm" onclick="removeAiLink(${i});renderAiMgrList()">
-        <i class="fas fa-trash"></i>
-      </button>
-    </div>`).join('');
-}
-
-let _aiDragFrom = null;
-function aiDragStart(e, i) {
-  _aiDragFrom = i;
-  e.dataTransfer.effectAllowed = 'move';
-  e.currentTarget.style.opacity = '.4';
-}
-function aiDragOver(e) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; }
-async function aiDrop(e, i) {
-  e.preventDefault();
-  if (_aiDragFrom === null || _aiDragFrom === i) return;
-  const links = _aiLinksCache ? [..._aiLinksCache] : await loadAiLinks();
-  const moved = links.splice(_aiDragFrom, 1)[0];
-  links.splice(i, 0, moved);
-  await saveAiLinks(links);
-  await renderAiLinks();
-  await renderAiMgrList();
-  _aiDragFrom = null;
-}
-function aiDragEnd() {
-  document.querySelectorAll('.ai-mgr-row').forEach(r => r.style.opacity = '1');
-  _aiDragFrom = null;
-}
-
-let _aiNewLogoDataUrl = '';
-
-function previewAiLogo(input) {
-  if (!input.files[0]) return;
-  const reader = new FileReader();
-  reader.onload = e => {
-    _aiNewLogoDataUrl = e.target.result;
-    const preview = document.getElementById('aiNewLogoPreview');
-    if (preview) preview.innerHTML = `<img src="${e.target.result}" style="width:32px;height:32px;object-fit:contain;border-radius:8px">`;
-    document.getElementById('aiNewLogoUrl').value = '';
-  };
-  reader.readAsDataURL(input.files[0]);
-}
-
-function previewAiLogoUrl(url) {
-  _aiNewLogoDataUrl = '';
-  const preview = document.getElementById('aiNewLogoPreview');
-  if (!preview) return;
-  if (url) {
-    preview.innerHTML = `<img src="${url}" style="width:32px;height:32px;object-fit:contain;border-radius:8px" onerror="this.parentElement.innerHTML='<i class=\'fas fa-exclamation-triangle\' style=\'color:var(--red)\'></i>'">`;
-  } else {
-    preview.innerHTML = '<i class="fas fa-image"></i>';
-  }
-}
-
-async function addAiLink() {
-  const name = document.getElementById('aiNewName').value.trim();
-  const url  = document.getElementById('aiNewUrl').value.trim();
-  const logoUrl = document.getElementById('aiNewLogoUrl').value.trim();
-  const logo = _aiNewLogoDataUrl || logoUrl || '';
-  if (!name || !url) { toast('請填寫名稱和網址', 'error'); return; }
-  if (!url.startsWith('http')) { toast('網址請以 https:// 開頭', 'error'); return; }
-  const maxOrder = (_aiLinksCache || []).reduce((m, l) => Math.max(m, l.sort_order || 0), 0);
-  const { error } = await authPost('ai_links', { name, url, logo, sort_order: maxOrder + 1 });
-  if (error) { toast('新增失敗：' + (error.message || ''), 'error'); return; }
-  await renderAiLinks();
-  await renderAiMgrList();
-  document.getElementById('aiNewName').value = '';
-  document.getElementById('aiNewUrl').value = '';
-  document.getElementById('aiNewLogoUrl').value = '';
-  document.getElementById('aiNewLogoPreview').innerHTML = '<i class="fas fa-image"></i>';
-  _aiNewLogoDataUrl = '';
-  toast(`已新增 ${name}`, 'success');
-}
-
-// =============================================
-// UTILS
-// =============================================
-function fmtDateTime(s) {
-  if (!s) return '';
-  return new Date(s).toLocaleString('zh-TW', {
-    year: 'numeric', month: '2-digit', day: '2-digit',
-    hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
+async function authPatch(table, filter, body) {
+  const token = await getToken();
+  if (!token) return { error: { message: '未登入' } };
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${filter}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${token}`, 'Prefer': 'return=minimal' },
+    body: JSON.stringify(body)
   });
+  if (!res.ok) { const e = await res.text(); return { error: { message: e } }; }
+  return { error: null };
 }
-function fmtDate(s) {
-  if (!s) return '';
-  return new Date(s).toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit' });
+async function authDelete(table, filter) {
+  const token = await getToken();
+  if (!token) return { error: { message: '未登入' } };
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${filter}`, {
+    method: 'DELETE',
+    headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${token}` }
+  });
+  if (!res.ok) { const e = await res.text(); return { error: { message: e } }; }
+  return { error: null };
+}
+async function authStorageUpload(path, blob, contentType) {
+  const token = await getToken();
+  if (!token) return { data: null, error: { message: '未登入' } };
+  const res = await fetch(`${SUPABASE_URL}/storage/v1/object/attachments/${path}`, {
+    method: 'POST',
+    headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${token}`, 'Content-Type': contentType, 'x-upsert': 'true' },
+    body: blob
+  });
+  if (!res.ok) { const e = await res.text(); return { data: null, error: { message: e } }; }
+  return { data: { publicUrl: `${SUPABASE_URL}/storage/v1/object/public/attachments/${path}` }, error: null };
 }
 
 // =============================================
@@ -1039,7 +893,7 @@ function fmtDate(s) {
 let currentUser = null;
 let currentProfile = null;
 let currentTag = '全部';
-let currentSort = 'popular';
+let currentSort = 'views';
 let currentAdminTab = 'pending';
 let searchQuery = '';
 let uploadTags = [];
@@ -1050,167 +904,179 @@ let bookmarkedPostIds = new Set();
 let allPosts = [];
 
 // =============================================
+// UTILS
+// =============================================
+function fmtDateTime(s) {
+  if (!s) return '';
+  return new Date(s).toLocaleString('zh-TW', { year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false });
+}
+function fmtDate(s) {
+  if (!s) return '';
+  return new Date(s).toLocaleDateString('zh-TW', { year:'numeric', month:'2-digit', day:'2-digit' });
+}
+
+// =============================================
 // AUTH
 // =============================================
 async function initAuth() {
-  // 處理驗證信回調（URL 帶有 #access_token 或 ?code= 時）
-  const { data: { session: cbSession }, error: cbError } = await db.auth.getSession();
-
-  // Supabase v2：偵測 PKCE code exchange（新版驗證流程）
+  // 處理 email 驗證回調
   const urlParams = new URLSearchParams(window.location.search);
-  const hashParams = new URLSearchParams(window.location.hash.replace('#', ''));
-  const hasCode = urlParams.has('code');
-  const hasToken = hashParams.has('access_token');
-
-  if (hasCode || hasToken) {
-    // 顯示驗證中提示
-    document.getElementById('app').innerHTML = `
-      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;gap:1rem;background:var(--bg);color:var(--text)">
-        <i class="fas fa-spinner fa-spin" style="font-size:2rem;color:var(--gold)"></i>
-        <p style="font-size:1rem">正在完成帳號驗證...</p>
-      </div>`;
-
-    // exchangeCodeForSession 會自動從 URL 取得 code 並換成 session
-    const { data, error } = await db.auth.exchangeCodeForSession(window.location.href);
-    if (error) {
-      document.getElementById('app').innerHTML = `
-        <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;gap:1rem;background:var(--bg);color:var(--text)">
-          <i class="fas fa-circle-xmark" style="font-size:2rem;color:#e74c3c"></i>
-          <p style="font-size:1rem;color:#e74c3c">驗證失敗：${error.message}</p>
-          <button class="btn btn-outline" onclick="location.href=location.pathname">返回首頁</button>
-        </div>`;
-      return;
-    }
-    // 清除 URL 參數，避免重複處理
+  if (urlParams.has('code')) {
+    const { error } = await db.auth.exchangeCodeForSession(window.location.href);
     window.history.replaceState({}, '', window.location.pathname);
-    // 重新載入頁面讓 app 正常初始化
-    location.reload();
-    return;
+    if (!error) { location.reload(); return; }
   }
 
-  if (cbSession) await onLogin(cbSession.user);
+  const { data: { session } } = await db.auth.getSession();
+  if (session?.user) await onLogin(session.user);
 
   db.auth.onAuthStateChange(async (event, session) => {
-    if (event === 'SIGNED_IN') await onLogin(session.user);
+    if (event === 'SIGNED_IN' && session?.user) await onLogin(session.user);
     if (event === 'SIGNED_OUT') onLogout();
-    if (event === 'USER_UPDATED') {
-      // 驗證完成後觸發
-      if (session) {
-        toast('🎉 帳號驗證成功！歡迎加入', 'success');
-        await onLogin(session.user);
-      }
-    }
   });
 }
 
 async function onLogin(user) {
   currentUser = user;
-  // 先載入 profile，再更新 UI（避免 updateUserUI 因 currentProfile=null 顯示登入按鈕）
-  try {
-    const { data: profile } = await db.from('profiles').select('*').eq('id', user.id).single();
-    currentProfile = profile;
-  } catch(e) {
-    console.warn('profile fetch failed:', e.message);
-    // 建立最小 profile
-    currentProfile = { id: user.id, name: user.email.split('@')[0], role: 'user' };
-  }
-  // 同時載入 likes / bookmarks（不阻擋 UI）
-  Promise.all([
-    db.from('likes').select('post_id').eq('user_id', user.id).then(r => {
-      likedPostIds = new Set((r.data || []).map(l => l.post_id));
-    }),
-    db.from('bookmarks').select('post_id').eq('user_id', user.id).then(r => {
-      bookmarkedPostIds = new Set((r.data || []).map(b => b.post_id));
-    }),
-  ]).catch(e => console.warn('likes/bookmarks:', e.message));
-  // profile 載入完再更新 UI 和導航
+
+  // 載入 profile（必須先完成，updateUserUI 才能正確顯示）
+  const { data: profile } = await db.from('profiles').select('*').eq('id', user.id).single();
+  currentProfile = profile || { id: user.id, name: user.email.split('@')[0], role: 'user' };
+
+  // 載入 likes / bookmarks（背景執行，不阻擋 UI）
+  db.from('likes').select('post_id').eq('user_id', user.id).then(r => {
+    likedPostIds = new Set((r.data || []).map(l => l.post_id));
+  }).catch(() => {});
+  db.from('bookmarks').select('post_id').eq('user_id', user.id).then(r => {
+    bookmarkedPostIds = new Set((r.data || []).map(b => b.post_id));
+  }).catch(() => {});
+
   updateUserUI();
   nav('home');
-  renderAiLinks().catch(()=>{});
 }
 
 function onLogout() {
-  currentUser = null; currentProfile = null; likedPostIds = new Set(); bookmarkedPostIds = new Set();
+  currentUser = null;
+  currentProfile = null;
+  likedPostIds = new Set();
+  bookmarkedPostIds = new Set();
   updateUserUI();
-  renderAiLinks().catch(()=>{});
-  nav('home');
+  nav('login');
 }
 
 function updateUserUI() {
   const ua = document.getElementById('userArea');
   const adminNav = document.getElementById('nav-admin');
-  const badge = document.getElementById('pendingBadge');
+  const mAdminNav = document.getElementById('mnav-admin');
+  if (!ua) return;
+
   if (currentUser && currentProfile) {
-    const initial = (currentProfile.name || currentUser.email).slice(0, 1);
+    const name = currentProfile.name || currentUser.email;
+    const initial = name.slice(0, 1);
+    const avatarStyle = getAvatarStyle();
+    const avatarContent = getAvatarContent();
     ua.innerHTML = `
-      <button class="btn btn-primary" onclick="nav('upload')"><i class="fas fa-plus"></i>新增分享</button>
-      <div class="dropdown" onclick="this.classList.toggle('open')">
-        <div class="avatar">${initial}</div>
+      <button class="btn btn-primary" onclick="nav('upload')"><i class="fas fa-plus"></i><span>新增分享</span></button>
+      <div class="dropdown" id="userDropdown">
+        <div class="avatar" style="background:${avatarStyle};overflow:hidden" onclick="document.getElementById('userDropdown').classList.toggle('open')">${avatarContent}</div>
         <div class="dropdown-menu">
-          <button class="dropdown-item" onclick="nav('profile')"><i class="fas fa-user"></i>${currentProfile.name || '我的帳號'}</button>
+          <button class="dropdown-item" onclick="nav('profile');document.getElementById('userDropdown').classList.remove('open')"><i class="fas fa-user"></i>${name}</button>
           <div class="dropdown-sep"></div>
-          <button class="dropdown-item" onclick="nav('upload')"><i class="fas fa-plus"></i>新增分享</button>
+          <button class="dropdown-item" onclick="nav('upload');document.getElementById('userDropdown').classList.remove('open')"><i class="fas fa-plus"></i>新增分享</button>
           <button class="dropdown-item" onclick="doLogout()"><i class="fas fa-right-from-bracket"></i>登出</button>
         </div>
       </div>`;
+
     if (currentProfile.role === 'admin') {
-      adminNav.style.display = '';
-      document.getElementById('mnav-admin').style.display = '';
+      if (adminNav) adminNav.style.display = '';
+      if (mAdminNav) mAdminNav.style.display = '';
       loadPendingCount();
     }
   } else {
     ua.innerHTML = `<button class="btn btn-outline" onclick="nav('login')"><i class="fas fa-right-to-bracket"></i>登入</button>`;
-    adminNav.style.display = 'none';
-    if (badge) badge.style.display = 'none';
+    if (adminNav) adminNav.style.display = 'none';
+    if (mAdminNav) mAdminNav.style.display = 'none';
   }
 }
 
-async function loadPendingCount() {
-  const { count } = await db.from('posts').select('id', { count: 'exact' }).eq('status', 'pending');
-  const badge = document.getElementById('pendingBadge');
-  const mbadge = document.getElementById('mPendingBadge');
-  const ct = document.getElementById('pendingCount');
-  if (badge) { badge.textContent = count || 0; badge.style.display = count > 0 ? '' : 'none'; }
-  if (mbadge) { mbadge.textContent = count || 0; mbadge.style.display = count > 0 ? '' : 'none'; }
-  if (ct) ct.textContent = count || 0;
+function getAvatarStyle() {
+  if (!currentProfile?.avatar_url) return 'linear-gradient(135deg,var(--gold),#8b6914)';
+  if (currentProfile.avatar_url.startsWith('preset:')) {
+    const idx = parseInt(currentProfile.avatar_url.replace('preset:', ''));
+    return AVATAR_PRESETS[idx]?.bg || 'linear-gradient(135deg,var(--gold),#8b6914)';
+  }
+  return 'linear-gradient(135deg,var(--gold),#8b6914)';
+}
+function getAvatarContent() {
+  if (currentProfile?.avatar_url?.startsWith('http')) {
+    return `<img src="${currentProfile.avatar_url}" style="width:100%;height:100%;object-fit:cover">`;
+  }
+  return (currentProfile?.name || currentUser?.email || '?').slice(0, 1);
 }
 
 async function doLogin() {
-  const email = document.getElementById('loginEmail').value.trim();
-  const pwd = document.getElementById('loginPwd').value;
+  const email = document.getElementById('loginEmail')?.value?.trim();
+  const pwd   = document.getElementById('loginPwd')?.value;
   if (!email || !pwd) { toast('請填寫帳號與密碼', 'error'); return; }
   const { error } = await db.auth.signInWithPassword({ email, password: pwd });
-  if (error) { toast('帳號或密碼錯誤', 'error'); return; }
-  toast('歡迎回來！', 'success');
-  nav('home');
+  if (error) toast('帳號或密碼錯誤', 'error');
 }
-
-// 已移除註冊功能，改由管理員統一建立帳號
-
 async function doLogout() {
   await db.auth.signOut();
-  document.querySelectorAll('.dropdown').forEach(d => d.classList.remove('open'));
-  toast('已成功登出', 'info');
+  toast('已登出', 'info');
 }
-
-
+async function changePassword() {
+  const np = document.getElementById('newPwd')?.value || '';
+  const cp = document.getElementById('confirmPwd')?.value || '';
+  if (!np) { toast('請輸入新密碼', 'error'); return; }
+  if (np.length < 8) { toast('密碼至少 8 位', 'error'); return; }
+  if (np !== cp) { toast('兩次密碼不一致', 'error'); return; }
+  const btn = document.querySelector('#editSection-password .btn-primary');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>處理中...'; }
+  const { error } = await db.auth.updateUser({ password: np });
+  if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-key"></i>確認變更'; }
+  if (error) { toast('失敗：' + error.message, 'error'); return; }
+  toast('🔐 密碼已更新', 'success');
+  toggleEditPanel();
+}
 
 // =============================================
 // NAVIGATION
 // =============================================
 function nav(page) {
+  // 需要登入的頁面
+  if (['upload', 'my', 'profile', 'admin'].includes(page) && !currentUser) {
+    nav('login'); return;
+  }
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   const el = document.getElementById('page-' + page);
   if (el) el.classList.add('active');
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
   const nb = document.getElementById('nav-' + page);
   if (nb) nb.classList.add('active');
-  if (page === 'home') { loadPosts(); }
-  if (page === 'rank') loadRank();
-  if (page === 'admin') { loadAdminPosts(); loadPendingCount(); }
+  closeMobileMenu();
+  if (page === 'home')    loadPosts();
+  if (page === 'rank')    loadRank();
+  if (page === 'admin')   { loadAdminPosts(); loadPendingCount(); }
   if (page === 'profile') renderProfile();
-  if (page === 'upload' && !currentUser) { nav('login'); return; }
-  document.querySelectorAll('.dropdown').forEach(d => d.classList.remove('open'));
+  if (page === 'my')      loadMyPosts();
+}
+
+// =============================================
+// HAMBURGER MENU
+// =============================================
+function toggleMobileMenu() {
+  const menu = document.getElementById('mobileMenu');
+  const btn  = document.getElementById('hamburger');
+  if (!menu || !btn) return;
+  const headerH = document.querySelector('header')?.offsetHeight || 72;
+  menu.style.top = headerH + 'px';
+  const open = menu.classList.toggle('open');
+  btn.classList.toggle('open', open);
+}
+function closeMobileMenu() {
+  document.getElementById('mobileMenu')?.classList.remove('open');
+  document.getElementById('hamburger')?.classList.remove('open');
 }
 
 // =============================================
@@ -1221,49 +1087,50 @@ async function loadPosts() {
   if (!grid) return;
   grid.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i>載入中...</div>';
   try {
-    // 不在列表頁 join attachments（避免查詢複雜度拖慢或出錯）
-    // 只查基本欄位，開文章時再 fetch 附件
-    let q = db.from('posts').select('id,title,prompt,result_text,tags,status,view_count,like_count,comment_count,bookmark_count,created_at,user_id,content_type,profiles(name)').eq('status', 'approved');
+    let q = db.from('posts')
+      .select('id,title,prompt,tags,status,view_count,like_count,comment_count,bookmark_count,created_at,user_id,profiles(name)')
+      .eq('status', 'approved');
     if (currentTag !== '全部') q = q.contains('tags', [currentTag]);
-    if (currentSort === 'views')         q = q.order('view_count',     { ascending: false });
+    if      (currentSort === 'views')     q = q.order('view_count',     { ascending: false });
     else if (currentSort === 'likes')     q = q.order('like_count',     { ascending: false });
     else if (currentSort === 'bookmarks') q = q.order('bookmark_count', { ascending: false });
     else if (currentSort === 'newest')    q = q.order('created_at',     { ascending: false });
-    else q = q.order('view_count', { ascending: false });
+    else                                  q = q.order('view_count',     { ascending: false });
     const { data, error } = await q.limit(50);
     if (error) throw error;
     allPosts = data || [];
     renderCards();
   } catch(e) {
-    console.error('loadPosts error:', e);
-    grid.innerHTML = `<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><p>載入失敗</p><small style="color:var(--text3)">${e.message || ''}</small><br><button class="btn btn-outline" style="margin-top:1rem" onclick="loadPosts()">重試</button></div>`;
+    console.error('loadPosts:', e);
+    grid.innerHTML = `<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><p>載入失敗：${e.message}</p><button class="btn btn-outline" style="margin-top:1rem" onclick="loadPosts()">重試</button></div>`;
   }
 }
 
 function renderCards() {
   const grid = document.getElementById('cardsGrid');
+  if (!grid) return;
   let list = allPosts;
   if (searchQuery) {
     const q = searchQuery.toLowerCase();
-    list = list.filter(p => (p.title + p.prompt + (p.result_text || '')).toLowerCase().includes(q));
+    list = list.filter(p => (p.title + (p.prompt || '') + (p.tags || []).join(' ')).toLowerCase().includes(q));
+  }
+  if (!list.length) {
+    grid.innerHTML = '<div class="empty-state" style="column-span:all"><i class="fas fa-magnifying-glass"></i><p>沒有符合條件的分享</p></div>';
+    return;
   }
   const maxViews = Math.max(...list.map(p => p.view_count || 0), 1);
-  if (!list.length) { grid.innerHTML = '<div class="empty-state" style="column-span:all"><i class="fas fa-magnifying-glass"></i><p>沒有符合條件的分享</p></div>'; return; }
   grid.innerHTML = list.map(p => {
-    const name = p.profiles?.name || '館員';
-    const initial = name.slice(0, 1);
-    const pct = Math.round((p.view_count || 0) / maxViews * 100);
-    const isLiked = likedPostIds.has(p.id);
-    const isBookmarked = bookmarkedPostIds.has(p.id);
-    const daysAgo = (Date.now() - new Date(p.created_at)) / 86400000;
+    const name  = p.profiles?.name || '館員';
+    const pct   = Math.round((p.view_count || 0) / maxViews * 100);
+    const liked = likedPostIds.has(p.id);
+    const bkmd  = bookmarkedPostIds.has(p.id);
+    const days  = (Date.now() - new Date(p.created_at)) / 86400000;
+    const tags  = (p.tags || []).slice(0, 3).map(t => `<span class="tag">${t}</span>`).join('');
     return `
     <div class="card" onclick="openPost('${p.id}')">
-      ${p.view_count > 300 ? '<div class="hot-badge">🔥 HOT</div>' : daysAgo < 7 ? '<div class="new-badge">✨ NEW</div>' : ''}
-      <div class="card-tags">
-        ${(p.tags || []).slice(0, 3).map(t => `<span class="tag">${t}</span>`).join('')}
-      </div>
+      ${p.view_count > 300 ? '<div class="hot-badge">🔥 HOT</div>' : days < 7 ? '<div class="new-badge">✨ NEW</div>' : ''}
+      <div class="card-tags">${tags}</div>
       <div class="card-title">${p.title}</div>
-
       <div class="card-excerpt">${(p.prompt || '').slice(0, 80)}${(p.prompt || '').length > 80 ? '…' : ''}</div>
       <div class="pop-bar-wrap">
         <i class="fas fa-fire" style="font-size:10px;color:var(--gold)"></i>
@@ -1272,16 +1139,16 @@ function renderCards() {
       </div>
       <div class="card-meta" style="margin-top:8px">
         <div class="card-author">
-          <div class="mini-avatar">${initial}</div>
+          <div class="mini-avatar">${name.slice(0,1)}</div>
           <span>${name}</span>
         </div>
         <div class="card-stats">
           <span class="card-stat"><i class="fas fa-eye" style="font-size:11px"></i>${p.view_count || 0}</span>
-          <span class="card-stat ${isLiked ? 'liked' : ''}" onclick="event.stopPropagation();toggleLike('${p.id}')" id="like-${p.id}" title="按讚">
-            <i class="${isLiked ? 'fas' : 'far'} fa-heart" style="font-size:11px"></i>${p.like_count || 0}
+          <span class="card-stat ${liked ? 'liked' : ''}" onclick="event.stopPropagation();toggleLike('${p.id}')" id="like-${p.id}">
+            <i class="${liked ? 'fas' : 'far'} fa-heart" style="font-size:11px"></i>${p.like_count || 0}
           </span>
-          <span class="card-stat ${isBookmarked ? 'bookmarked' : ''}" onclick="event.stopPropagation();toggleBookmark('${p.id}')" id="bkm-${p.id}" title="收藏">
-            <i class="${isBookmarked ? 'fas' : 'far'} fa-bookmark" style="font-size:11px"></i>${p.bookmark_count || 0}
+          <span class="card-stat ${bkmd ? 'bookmarked' : ''}" onclick="event.stopPropagation();toggleBookmark('${p.id}')" id="bkm-${p.id}">
+            <i class="${bkmd ? 'fas' : 'far'} fa-bookmark" style="font-size:11px"></i>${p.bookmark_count || 0}
           </span>
         </div>
       </div>
@@ -1290,100 +1157,101 @@ function renderCards() {
 }
 
 async function openPost(id) {
-  try {
-  // increment view
-  const post = allPosts.find(p => p.id === id) || {};
-  authPatch('posts', `id=eq.${id}`, { view_count: (post.view_count || 0) + 1 }).catch(()=>{});
-  if (post.view_count !== undefined) post.view_count++;
-
-  // fetch full post with attachments
-  const { data: p, error: pErr } = await db.from('posts')
-    .select('*, profiles(name, avatar_url), attachments(*)')
-    .eq('id', id).single();
-  if (pErr || !p) { toast('文章載入失敗', 'error'); return; }
-  const { data: comments } = await db.from('comments').select('*, profiles(name, avatar_url, role)').eq('post_id', id).order('created_at');
-
-  const name = p.profiles?.name || '館員';
-  const initial = name.slice(0, 1);
-  const isLiked = likedPostIds.has(p.id);
-  const imgs = (p.attachments || []).filter(a => a.is_webp || a.file_type?.startsWith('image'));
-  const files = (p.attachments || []).filter(a => !a.is_webp && !a.file_type?.startsWith('image'));
-
-  document.getElementById('modalTitle').textContent = p.title;
-  document.getElementById('modalBody').innerHTML = `
-    <div style="display:flex;gap:8px;margin-bottom:1rem;flex-wrap:wrap;align-items:center">
-      ${p.tool ? `<span class="tag ai">${p.tool}</span>` : ''}
-      <span class="tag">${p.category || ''}</span>
-      ${(p.tags || []).map(t => `<span class="tag">${t}</span>`).join('')}
-      <span style="margin-left:auto;font-size:12px;color:var(--text3)">${new Date(p.created_at).toLocaleDateString('zh-TW')} · ${name}</span>
-    </div>
-    ${imgs.map(a => `<img src="${a.file_url}" style="width:100%;border-radius:var(--radius);margin-bottom:1rem">`).join('')}
-    <div class="prompt-block">
-      <div class="prompt-label"><i class="fas fa-code" style="margin-right:5px"></i>Prompt 提示詞</div>
-      <button class="copy-prompt-btn" onclick="copyPrompt(\`${(p.prompt||'').replace(/`/g,'\\`')}\`)"><i class="fas fa-copy"></i> 複製</button>
-      <div class="prompt-text">${p.prompt || ''}</div>
-    </div>
-    ${p.result_text ? `<div class="result-section">
-      <div class="prompt-label" style="color:var(--text2);margin-bottom:.4rem"><i class="fas fa-robot" style="margin-right:5px"></i>AI 生成結果</div>
-      <div class="prompt-block" style="background:var(--bg)"><div class="prompt-text">${p.result_text}</div></div>
-    </div>` : ''}
-    ${files.length ? `<div style="margin-top:1rem"><div class="prompt-label">附件檔案</div>${files.map(a=>`
-      <div class="uploaded-file" style="margin-top:6px">
-        <i class="fas fa-file"></i><span class="fn">${a.file_name}</span>
-        <a href="${a.file_url}" target="_blank" class="btn btn-outline btn-sm"><i class="fas fa-download"></i>下載</a>
-      </div>`).join('')}</div>` : ''}
-    <div class="comments-section">
-      <div class="comments-title">💬 討論（${(comments||[]).length}）</div>
-      <div id="commentList">
-        ${(comments||[]).length === 0 ? '<div style="font-size:.82rem;color:var(--text3);margin-bottom:.8rem">尚無留言，搶先留言吧！</div>' :
-          (comments||[]).map(c => {
-            const cName = c.profiles?.name || '館員';
-            const cAvatar = c.profiles?.avatar_url;
-            const cAvatarStyle = cAvatar?.startsWith('preset:')
-              ? AVATAR_PRESETS[parseInt(cAvatar.replace('preset:',''))]?.bg || AVATAR_PRESETS[0].bg
-              : 'linear-gradient(135deg,var(--gold),#8b6914)';
-            const cAvatarContent = cAvatar?.startsWith('http')
-              ? `<img src="${cAvatar}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`
-              : cName.slice(0,1);
-            return `
-          <div class="comment-item" style="display:flex;gap:10px;align-items:flex-start">
-            <div class="avatar" style="width:30px;height:30px;font-size:11px;flex-shrink:0;background:${cAvatarStyle};border:1px solid var(--border)">${cAvatarContent}</div>
-            <div style="flex:1;min-width:0">
-              <div class="comment-author">${cName}</div>
-              <div class="comment-text">${c.content}</div>
-              <div class="comment-time">${fmtDateTime(c.created_at)}</div>
-            </div>
-          </div>`;
-          }).join('')}
-      </div>
-      ${currentUser ? `<div class="comment-input-row">
-        <input id="commentInput" class="comment-input" type="text" placeholder="留下你的想法..." onkeydown="if(event.key==='Enter')submitComment('${p.id}')">
-        <button class="btn btn-primary btn-sm" onclick="submitComment('${p.id}')"><i class="fas fa-paper-plane"></i></button>
-      </div>` : `<p style="font-size:.82rem;color:var(--text3);margin-top:.8rem"><a onclick="nav('login')" style="color:var(--gold);cursor:pointer">登入</a>後即可留言</p>`}
-    </div>`;
-
-  const isModalBookmarked = bookmarkedPostIds.has(p.id);
-  document.getElementById('modalStats').innerHTML = `
-    <button class="stat-item ${isLiked ? 'liked' : ''}" onclick="toggleLike('${p.id}', null, true)" id="mLike" title="按讚">
-      <i class="${isLiked ? 'fas' : 'far'} fa-heart"></i><span id="mLikeCount">${p.like_count || 0}</span> 按讚
-    </button>
-    <button class="stat-item ${isModalBookmarked ? 'bookmarked' : ''}" onclick="toggleBookmark('${p.id}', true)" id="mBkm" title="收藏">
-      <i class="${isModalBookmarked ? 'fas' : 'far'} fa-bookmark"></i><span id="mBkmCount">${p.bookmark_count || 0}</span> 收藏
-    </button>
-    <div class="stat-item"><i class="fas fa-eye"></i>${p.view_count || 0} 瀏覽</div>
-    <div class="stat-item"><i class="fas fa-comment"></i>${p.comment_count || 0} 留言</div>`;
-
   document.getElementById('cardModal').classList.add('show');
-  } catch(e) { console.error('openPost error:', e); toast('文章載入失敗：' + e.message, 'error'); }
+  document.getElementById('modalTitle').textContent = '載入中...';
+  document.getElementById('modalBody').innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i></div>';
+  document.getElementById('modalStats').innerHTML = '';
+
+  // increment view in background
+  const post = allPosts.find(p => p.id === id);
+  if (post) { post.view_count = (post.view_count || 0) + 1; }
+  authPatch('posts', `id=eq.${id}`, { view_count: (post?.view_count || 1) }).catch(() => {});
+
+  try {
+    const [postRes, commentRes] = await Promise.all([
+      db.from('posts').select('*, profiles(name, avatar_url), attachments(*)').eq('id', id).single(),
+      db.from('comments').select('*, profiles(name, avatar_url)').eq('post_id', id).order('created_at')
+    ]);
+    if (postRes.error) throw postRes.error;
+    const p = postRes.data;
+    const comments = commentRes.data || [];
+    const liked = likedPostIds.has(p.id);
+    const bkmd  = bookmarkedPostIds.has(p.id);
+    const name  = p.profiles?.name || '館員';
+    const imgs  = (p.attachments || []).filter(a => a.is_webp || a.file_type?.startsWith('image'));
+    const files = (p.attachments || []).filter(a => !a.is_webp && !a.file_type?.startsWith('image'));
+
+    document.getElementById('modalTitle').textContent = p.title;
+    document.getElementById('modalBody').innerHTML = `
+      <div style="display:flex;gap:8px;margin-bottom:1rem;flex-wrap:wrap;align-items:center">
+        ${(p.tags || []).map(t => `<span class="tag">${t}</span>`).join('')}
+        <span style="margin-left:auto;font-size:12px;color:var(--text3)">${fmtDate(p.created_at)} · ${name}</span>
+      </div>
+      ${imgs.map(a => `<img src="${a.file_url}" style="width:100%;border-radius:var(--radius);margin-bottom:1rem;max-height:400px;object-fit:contain">`).join('')}
+      <div class="prompt-block">
+        <div class="prompt-label"><i class="fas fa-code" style="margin-right:5px"></i>Prompt 提示詞</div>
+        <button class="copy-prompt-btn" onclick="copyPrompt(this)"><i class="fas fa-copy"></i> 複製</button>
+        <div class="prompt-text" id="promptText">${p.prompt || ''}</div>
+      </div>
+      ${p.result_text ? `<div class="result-section">
+        <div class="prompt-label" style="color:var(--text2);margin-bottom:.4rem;margin-top:1rem"><i class="fas fa-robot" style="margin-right:5px"></i>AI 生成結果</div>
+        <div class="prompt-block" style="background:var(--bg)"><div class="prompt-text">${p.result_text}</div></div>
+      </div>` : ''}
+      ${files.length ? `<div style="margin-top:1rem"><div class="prompt-label">附件檔案</div>${files.map(a => `
+        <div class="uploaded-file" style="margin-top:6px">
+          <i class="fas fa-file fi-icon"></i><span class="fi-name">${a.file_name}</span>
+          <a href="${a.file_url}" target="_blank" class="btn btn-outline btn-sm"><i class="fas fa-download"></i>下載</a>
+        </div>`).join('')}</div>` : ''}
+      <div class="comments-section">
+        <div class="comments-title">💬 討論（${comments.length}）</div>
+        <div id="commentList">
+          ${comments.length === 0 ? '<div style="font-size:.82rem;color:var(--text3);margin-bottom:.8rem">尚無留言，搶先留言吧！</div>' :
+            comments.map(c => {
+              const cn = c.profiles?.name || '館員';
+              const ca = c.profiles?.avatar_url;
+              const cs = ca?.startsWith('preset:') ? (AVATAR_PRESETS[parseInt(ca.replace('preset:',''))]?.bg || 'linear-gradient(135deg,var(--gold),#8b6914)') : 'linear-gradient(135deg,var(--gold),#8b6914)';
+              const cc = ca?.startsWith('http') ? `<img src="${ca}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">` : cn.slice(0,1);
+              return `<div class="comment-item" style="display:flex;gap:10px;align-items:flex-start">
+                <div class="avatar" style="width:30px;height:30px;font-size:11px;flex-shrink:0;background:${cs};border:1px solid var(--border);overflow:hidden">${cc}</div>
+                <div style="flex:1"><div class="comment-author">${cn}</div><div class="comment-text">${c.content}</div><div class="comment-time">${fmtDateTime(c.created_at)}</div></div>
+              </div>`;
+            }).join('')}
+        </div>
+        ${currentUser ? `<div class="comment-input-row">
+          <input id="commentInput" class="comment-input" type="text" placeholder="留下你的想法..." onkeydown="if(event.key==='Enter')submitComment('${p.id}')">
+          <button class="btn btn-primary btn-sm" onclick="submitComment('${p.id}')"><i class="fas fa-paper-plane"></i></button>
+        </div>` : `<p style="font-size:.82rem;color:var(--text3);margin-top:.8rem"><a onclick="nav('login')" style="color:var(--gold);cursor:pointer">登入</a>後即可留言</p>`}
+      </div>`;
+
+    document.getElementById('modalStats').innerHTML = `
+      <button class="stat-item ${liked ? 'liked' : ''}" onclick="toggleLike('${p.id}',true)" id="mLike">
+        <i class="${liked ? 'fas' : 'far'} fa-heart"></i><span id="mLikeCount">${p.like_count || 0}</span> 按讚
+      </button>
+      <button class="stat-item ${bkmd ? 'bookmarked' : ''}" onclick="toggleBookmark('${p.id}',true)" id="mBkm">
+        <i class="${bkmd ? 'fas' : 'far'} fa-bookmark"></i><span id="mBkmCount">${p.bookmark_count || 0}</span> 收藏
+      </button>
+      <div class="stat-item"><i class="fas fa-eye"></i>${p.view_count || 0}</div>
+      <div class="stat-item"><i class="fas fa-comment"></i>${p.comment_count || 0}</div>`;
+  } catch(e) {
+    console.error('openPost:', e);
+    document.getElementById('modalBody').innerHTML = `<div class="empty-state"><p>載入失敗：${e.message}</p></div>`;
+  }
 }
 
+function copyPrompt(btn) {
+  const text = document.getElementById('promptText')?.textContent || '';
+  navigator.clipboard.writeText(text).then(() => toast('已複製 ✓', 'success'));
+}
 function closeModal() { document.getElementById('cardModal').classList.remove('show'); }
 
-async function toggleLike(id, el, fromModal = false) {
-  if (!currentUser) { toast('請先登入才能按讚', 'info'); return; }
-  const isLiked = likedPostIds.has(id);
-  const post = allPosts.find(p => p.id === id);
-  if (isLiked) {
+// =============================================
+// LIKES / BOOKMARKS
+// =============================================
+async function toggleLike(id, fromModal = false) {
+  if (!currentUser) { toast('請先登入', 'info'); return; }
+  const liked = likedPostIds.has(id);
+  const post  = allPosts.find(p => p.id === id);
+  if (liked) {
     await authDelete('likes', `post_id=eq.${id}&user_id=eq.${currentUser.id}`);
     likedPostIds.delete(id);
     if (post) post.like_count = Math.max((post.like_count || 1) - 1, 0);
@@ -1392,26 +1260,21 @@ async function toggleLike(id, el, fromModal = false) {
     likedPostIds.add(id);
     if (post) post.like_count = (post.like_count || 0) + 1;
   }
-  const newLiked = !isLiked;
-  // update card
+  const newLiked = !liked;
   const cardEl = document.getElementById('like-' + id);
-  if (cardEl) {
-    cardEl.classList.toggle('liked', newLiked);
-    cardEl.innerHTML = `<i class="${newLiked ? 'fas' : 'far'} fa-heart" style="font-size:11px"></i>${post?.like_count || 0}`;
-  }
-  // update modal
+  if (cardEl) { cardEl.className = `card-stat ${newLiked ? 'liked' : ''}`; cardEl.innerHTML = `<i class="${newLiked ? 'fas' : 'far'} fa-heart" style="font-size:11px"></i>${post?.like_count || 0}`; }
   if (fromModal) {
     const ml = document.getElementById('mLike');
-    if (ml) { ml.classList.toggle('liked', newLiked); ml.innerHTML = `<i class="${newLiked ? 'fas' : 'far'} fa-heart"></i><span id="mLikeCount">${post?.like_count || 0}</span> 按讚`; }
+    if (ml) { ml.className = `stat-item ${newLiked ? 'liked' : ''}`; ml.innerHTML = `<i class="${newLiked ? 'fas' : 'far'} fa-heart"></i><span id="mLikeCount">${post?.like_count || 0}</span> 按讚`; }
   }
   toast(newLiked ? '❤️ 已按讚' : '取消按讚', newLiked ? 'success' : 'info');
 }
 
 async function toggleBookmark(id, fromModal = false) {
-  if (!currentUser) { toast('請先登入才能收藏', 'info'); return; }
-  const isBookmarked = bookmarkedPostIds.has(id);
-  const post = allPosts.find(p => p.id === id);
-  if (isBookmarked) {
+  if (!currentUser) { toast('請先登入', 'info'); return; }
+  const bkmd = bookmarkedPostIds.has(id);
+  const post  = allPosts.find(p => p.id === id);
+  if (bkmd) {
     await authDelete('bookmarks', `post_id=eq.${id}&user_id=eq.${currentUser.id}`);
     bookmarkedPostIds.delete(id);
     if (post) post.bookmark_count = Math.max((post.bookmark_count || 1) - 1, 0);
@@ -1420,44 +1283,45 @@ async function toggleBookmark(id, fromModal = false) {
     bookmarkedPostIds.add(id);
     if (post) post.bookmark_count = (post.bookmark_count || 0) + 1;
   }
-  const newBkm = !isBookmarked;
-  // update card
+  const newBkmd = !bkmd;
   const cardEl = document.getElementById('bkm-' + id);
-  if (cardEl) {
-    cardEl.classList.toggle('bookmarked', newBkm);
-    cardEl.innerHTML = `<i class="${newBkm ? 'fas' : 'far'} fa-bookmark" style="font-size:11px"></i>${post?.bookmark_count || 0}`;
-  }
-  // update modal
+  if (cardEl) { cardEl.className = `card-stat ${newBkmd ? 'bookmarked' : ''}`; cardEl.innerHTML = `<i class="${newBkmd ? 'fas' : 'far'} fa-bookmark" style="font-size:11px"></i>${post?.bookmark_count || 0}`; }
   if (fromModal) {
     const mb = document.getElementById('mBkm');
-    if (mb) { mb.classList.toggle('bookmarked', newBkm); mb.innerHTML = `<i class="${newBkm ? 'fas' : 'far'} fa-bookmark"></i><span id="mBkmCount">${post?.bookmark_count || 0}</span> 收藏`; }
+    if (mb) { mb.className = `stat-item ${newBkmd ? 'bookmarked' : ''}`; mb.innerHTML = `<i class="${newBkmd ? 'fas' : 'far'} fa-bookmark"></i><span id="mBkmCount">${post?.bookmark_count || 0}</span> 收藏`; }
   }
-  toast(newBkm ? '🔖 已加入收藏' : '取消收藏', newBkm ? 'success' : 'info');
+  toast(newBkmd ? '🔖 已收藏' : '取消收藏', newBkmd ? 'success' : 'info');
 }
 
 async function submitComment(postId) {
   const input = document.getElementById('commentInput');
   const content = input?.value?.trim();
   if (!content) return;
-  const adb6 = await getAuthDb();
-  const { data, error } = await adb6.from('comments')
-    .insert({ post_id: postId, user_id: currentUser.id, content })
-    .select('*, profiles(name)').single();
+  const { data, error } = await authPost('comments', { post_id: postId, user_id: currentUser.id, content });
   if (error) { toast('留言失敗', 'error'); return; }
+  const cn = currentProfile?.name || '館員';
   const list = document.getElementById('commentList');
   if (list) {
-    list.innerHTML += `<div class="comment-item">
-      <div class="comment-author">${data.profiles?.name || '館員'}</div>
-      <div class="comment-text">${content}</div>
-      <div class="comment-time">${fmtDateTime(new Date().toISOString())}</div>
+    list.innerHTML += `<div class="comment-item" style="display:flex;gap:10px;align-items:flex-start">
+      <div class="avatar" style="width:30px;height:30px;font-size:11px;flex-shrink:0;background:${getAvatarStyle()};border:1px solid var(--border);overflow:hidden">${getAvatarContent()}</div>
+      <div style="flex:1"><div class="comment-author">${cn}</div><div class="comment-text">${content}</div><div class="comment-time">${fmtDateTime(new Date().toISOString())}</div></div>
     </div>`;
   }
   input.value = '';
   toast('已留言', 'success');
 }
 
-function copyPrompt(text) {
-  navigator.clipboard.writeText(text).then(() => toast('提示詞已複製到剪貼簿', 'success'));
+// =============================================
+// STATS / FILTERS / SORT
+// =============================================
+async function loadPendingCount() {
+  const { count } = await db.from('posts').select('id', { count: 'exact' }).eq('status', 'pending');
+  ['pendingBadge','mPendingBadge'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) { el.textContent = count || 0; el.style.display = count > 0 ? '' : 'none'; }
+  });
+  const ct = document.getElementById('pendingCount');
+  if (ct) ct.textContent = count || 0;
 }
 
 function filterTag(tag, el) {
@@ -1475,29 +1339,34 @@ function sortCards(s, el) {
 }
 
 // =============================================
-// STATS
-// =============================================
-// loadStats removed — stats section replaced by AI links
-
-// =============================================
 // RANK
 // =============================================
 async function loadRank() {
-  const { data } = await db.from('posts').select('*, profiles(name)').eq('status', 'approved').order('view_count', { ascending: false }).limit(20);
   const el = document.getElementById('leaderboard');
+  if (!el) return;
+  el.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i>載入中...</div>';
+  const { data } = await db.from('posts').select('id,title,view_count,like_count,tags,profiles(name)').eq('status','approved').order('view_count',{ascending:false}).limit(20);
   if (!data?.length) { el.innerHTML = '<div class="empty-state"><i class="fas fa-trophy"></i><p>尚無資料</p></div>'; return; }
   el.innerHTML = data.map((p, i) => `
     <div class="lb-item" onclick="openPost('${p.id}')">
-      <div class="lb-rank ${i < 3 ? 'r' + (i + 1) : ''}">${i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : i + 1}</div>
+      <div class="lb-rank ${i < 3 ? 'r'+(i+1) : ''}">${['🥇','🥈','🥉'][i] || i+1}</div>
       <div class="lb-content">
         <div class="lb-title">${p.title}</div>
-        <div class="lb-author">${p.profiles?.name || '館員'}${p.tool ? ' · ' + p.tool : ''}${p.tags?.[0] ? ' · ' + p.tags[0] : ''}</div>
+        <div class="lb-author">${p.profiles?.name || '館員'}${p.tags?.[0] ? ' · ' + p.tags[0] : ''}</div>
       </div>
-      <div class="lb-views">
-        <div class="lb-views-num">${(p.view_count || 0).toLocaleString()}</div>
-        <span class="lb-views-label">次瀏覽</span>
-      </div>
+      <div class="lb-views"><div class="lb-views-num">${(p.view_count||0).toLocaleString()}</div><span class="lb-views-label">次瀏覽</span></div>
     </div>`).join('');
+}
+
+// =============================================
+// MY POSTS
+// =============================================
+async function loadMyPosts() {
+  if (!currentUser) return;
+  const el = document.getElementById('profileContent');
+  if (!el) return;
+  el.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i>載入中...</div>';
+  await renderProfile();
 }
 
 // =============================================
@@ -1505,28 +1374,29 @@ async function loadRank() {
 // =============================================
 async function loadAdminPosts() {
   const el = document.getElementById('adminList');
+  if (!el) return;
   el.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i>載入中...</div>';
-  let q = db.from('posts').select('*, profiles(name)');
-  if (currentAdminTab === 'pending') q = q.eq('status', 'pending').order('created_at', { ascending: true });
-  else if (currentAdminTab === 'approved') q = q.eq('status', 'approved').order('created_at', { ascending: false });
-  else q = q.eq('status', 'rejected').order('updated_at', { ascending: false });
+  let q = db.from('posts').select('id,title,prompt,tags,status,sensitive_flags,created_at,profiles(name)');
+  if (currentAdminTab === 'pending')  q = q.eq('status','pending').order('created_at',{ascending:true});
+  else if (currentAdminTab === 'approved') q = q.eq('status','approved').order('created_at',{ascending:false});
+  else q = q.eq('status','rejected').order('updated_at',{ascending:false});
   const { data } = await q.limit(50);
-  if (!data?.length) { el.innerHTML = `<div class="empty-state"><i class="fas fa-inbox"></i><p>目前沒有${currentAdminTab === 'pending' ? '待審核' : currentAdminTab === 'approved' ? '已上架' : '已拒絕'}的項目</p></div>`; return; }
+  if (!data?.length) { el.innerHTML = `<div class="empty-state"><i class="fas fa-inbox"></i><p>此分類目前沒有內容</p></div>`; return; }
   el.innerHTML = data.map(p => {
     const flags = p.sensitive_flags || [];
     return `<div class="admin-card">
       <div class="admin-card-header">
         <div class="admin-card-title">${p.title}</div>
-        <span class="status-badge ${p.status === 'pending' ? 'status-pending' : p.status === 'approved' ? 'status-approved' : 'status-rejected'}">${p.status === 'pending' ? '待審核' : p.status === 'approved' ? '已上架' : '已拒絕'}</span>
+        <span class="status-badge status-${p.status}">${p.status==='pending'?'待審核':p.status==='approved'?'已上架':'已拒絕'}</span>
       </div>
-      <div class="admin-card-meta">${p.profiles?.name || '館員'}${p.tool ? ' · ' + p.tool : ''} · ${new Date(p.created_at).toLocaleDateString('zh-TW')}</div>
-      ${flags.length ? `<div class="sensitive-flag"><i class="fas fa-triangle-exclamation"></i>偵測到敏感詞：${flags.join('、')}</div>` : ''}
-      <div class="admin-card-excerpt">${(p.prompt || '').slice(0, 150)}${(p.prompt || '').length > 150 ? '…' : ''}</div>
+      <div class="admin-card-meta">${p.profiles?.name||'館員'} · ${fmtDate(p.created_at)}</div>
+      ${flags.length ? `<div class="sensitive-flag"><i class="fas fa-triangle-exclamation"></i>敏感詞：${flags.join('、')}</div>` : ''}
+      <div class="admin-card-excerpt">${(p.prompt||'').slice(0,150)}${(p.prompt||'').length>150?'…':''}</div>
       <div class="admin-actions">
-        ${p.status === 'pending' ? `
-          <button class="btn btn-success btn-sm" onclick="setPostStatus('${p.id}','approved')"><i class="fas fa-check"></i>核准上架</button>
+        ${p.status==='pending' ? `
+          <button class="btn btn-success btn-sm" onclick="setPostStatus('${p.id}','approved')"><i class="fas fa-check"></i>核准</button>
           <button class="btn btn-danger btn-sm" onclick="setPostStatus('${p.id}','rejected')"><i class="fas fa-xmark"></i>拒絕</button>` : ''}
-        ${p.status === 'approved' ? `<button class="btn btn-danger btn-sm" onclick="setPostStatus('${p.id}','rejected')"><i class="fas fa-eye-slash"></i>下架</button>` : ''}
+        ${p.status==='approved' ? `<button class="btn btn-danger btn-sm" onclick="setPostStatus('${p.id}','rejected')"><i class="fas fa-eye-slash"></i>下架</button>` : ''}
         <button class="btn btn-outline btn-sm" onclick="openPost('${p.id}')"><i class="fas fa-eye"></i>預覽</button>
       </div>
     </div>`;
@@ -1534,364 +1404,281 @@ async function loadAdminPosts() {
 }
 
 async function setPostStatus(id, status) {
-  const { data: post } = await db.from('posts').select('title').eq('id', id).single();
+  const post = (await db.from('posts').select('title').eq('id',id).single()).data;
   const title = post?.title || '此文章';
-  if (status === 'approved') {
-    showConfirm('✅','確認核准上架？',`「${title}」將公開顯示給所有使用者。`,'核准上架','btn-success', () => _doSetStatus(id, status));
-  } else if (status === 'rejected') {
-    showConfirm('🚫','確認拒絕刊登？',`「${title}」將被拒絕，作者可修改後重新提交。`,'確認拒絕','btn-danger', () => _doSetStatus(id, status));
-  } else {
-    _doSetStatus(id, status);
-  }
-}
-
-async function _doSetStatus(id, status) {
-  const { data: { session } } = await db.auth.getSession();
-  if (!session) { toast('請重新登入', 'error'); return; }
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/posts?id=eq.${id}`, {
-    method: 'PATCH',
-    headers: {
-      'Content-Type': 'application/json',
-      'apikey': SUPABASE_KEY,
-      'Authorization': `Bearer ${session.access_token}`,
-      'Prefer': 'return=minimal'
-    },
-    body: JSON.stringify({ status })
+  const labels = { approved: ['✅','確認核准上架？',`「${title}」將公開顯示。`,'核准上架','btn-success'], rejected: ['🚫','確認拒絕？',`「${title}」將被拒絕。`,'確認拒絕','btn-danger'] };
+  const l = labels[status];
+  if (l) showConfirm(l[0], l[1], l[2], l[3], l[4], async () => {
+    const { error } = await authPatch('posts', `id=eq.${id}`, { status });
+    if (error) { toast('操作失敗：' + error.message, 'error'); return; }
+    toast(status==='approved' ? '✅ 已核准' : '🚫 已拒絕', status==='approved'?'success':'info');
+    loadAdminPosts(); loadPendingCount();
   });
-  if (!res.ok) { const e = await res.text(); toast('操作失敗：' + e, 'error'); return; }
-  toast(status === 'approved' ? '✅ 已核准上架' : '🚫 已拒絕', status === 'approved' ? 'success' : 'info');
-  loadAdminPosts();
-  loadPendingCount();
+  else {
+    const { error } = await authPatch('posts', `id=eq.${id}`, { status });
+    if (error) { toast('操作失敗', 'error'); return; }
+    loadAdminPosts(); loadPendingCount();
+  }
 }
 
 function adminTab(tab, el) {
   currentAdminTab = tab;
   document.querySelectorAll('.admin-tab').forEach(b => b.classList.remove('active'));
-  el.classList.add('active');
+  if (el) el.classList.add('active');
   loadAdminPosts();
 }
 
 // =============================================
+// CONFIRM DIALOG
+// =============================================
+let _confirmCb = null;
+function showConfirm(icon, title, msg, btnLabel, btnClass, cb) {
+  document.getElementById('confirmIcon').textContent = icon;
+  document.getElementById('confirmTitle').textContent = title;
+  document.getElementById('confirmMsg').textContent = msg;
+  const btn = document.getElementById('confirmOkBtn');
+  btn.textContent = btnLabel; btn.className = 'btn ' + btnClass;
+  _confirmCb = cb;
+  document.getElementById('confirmOverlay').classList.add('show');
+}
+function closeConfirm() { document.getElementById('confirmOverlay').classList.remove('show'); _confirmCb = null; }
+function doConfirm() { closeConfirm(); if (_confirmCb) _confirmCb(); }
+
+// =============================================
 // UPLOAD / SUBMIT
 // =============================================
-function fmt(cmd, val = null) { document.getElementById('promptEditor').focus(); document.execCommand(cmd, false, val); }
-function fmtResult(cmd) { document.getElementById('resultEditor').focus(); document.execCommand(cmd, false, null); }
+function fmt(cmd)        { document.getElementById('promptEditor')?.focus(); document.execCommand(cmd, false, null); }
+function fmtResult(cmd)  { document.getElementById('resultEditor')?.focus(); document.execCommand(cmd, false, null); }
 function insertCodeBlock() {
   const code = document.createElement('code');
-  code.style.cssText = 'background:rgba(0,0,0,.3);padding:2px 6px;border-radius:3px;font-family:monospace;color:var(--gold2)';
-  code.textContent = 'code here';
+  code.style.cssText = 'background:rgba(0,0,0,.3);padding:2px 6px;border-radius:3px;font-family:monospace';
+  code.textContent = 'code';
   const r = window.getSelection().getRangeAt(0);
   r.deleteContents(); r.insertNode(code);
 }
-
 function checkSensitive() {
-  const text = document.getElementById('promptEditor').innerText;
+  const text = document.getElementById('promptEditor')?.innerText || '';
   const found = SENSITIVE_WORDS.filter(w => text.includes(w));
   const alert = document.getElementById('sensitiveAlert');
-  if (found.length) {
-    document.getElementById('sensitiveMsg').textContent = `偵測到敏感詞彙：${found.join('、')}，請重新檢視後再提交。`;
-    alert.classList.add('show');
-  } else alert.classList.remove('show');
+  if (found.length) { document.getElementById('sensitiveMsg').textContent = `偵測到敏感詞：${found.join('、')}`; alert.classList.add('show'); }
+  else alert.classList.remove('show');
 }
-
 function addTag(e) {
-  if (e.key === 'Enter' || e.key === ',') {
-    e.preventDefault();
-    const v = e.target.value.trim();
-    if (v && !uploadTags.includes(v)) { uploadTags.push(v); renderUploadTags(); }
-    e.target.value = '';
-  }
+  if (e.key !== 'Enter' && e.key !== ',') return;
+  e.preventDefault();
+  const v = e.target.value.trim();
+  if (v && !uploadTags.includes(v)) { uploadTags.push(v); renderUploadTags(); }
+  e.target.value = '';
 }
 function removeTag(t) { uploadTags = uploadTags.filter(x => x !== t); renderUploadTags(); }
 function renderUploadTags() {
   const area = document.getElementById('tagsArea');
+  if (!area) return;
   area.querySelectorAll('.tag-chip').forEach(x => x.remove());
   const inp = document.getElementById('tagInput');
   uploadTags.forEach(t => {
-    const chip = document.createElement('span');
-    chip.className = 'tag-chip';
+    const chip = document.createElement('span'); chip.className = 'tag-chip';
     chip.innerHTML = `${t}<button onclick="removeTag('${t}')">×</button>`;
     area.insertBefore(chip, inp);
   });
 }
-
 async function convertToWebP(file) {
   return new Promise((res, rej) => {
-    const img = new Image();
-    const url = URL.createObjectURL(file);
+    const img = new Image(); const url = URL.createObjectURL(file);
     img.onload = () => {
-      const c = document.createElement('canvas');
-      c.width = img.width; c.height = img.height;
+      const c = document.createElement('canvas'); c.width = img.width; c.height = img.height;
       c.getContext('2d').drawImage(img, 0, 0);
-      c.toBlob(blob => { URL.revokeObjectURL(url); blob ? res(blob) : rej(); }, 'image/webp', 0.88);
+      c.toBlob(b => { URL.revokeObjectURL(url); b ? res(b) : rej(); }, 'image/webp', 0.88);
     };
     img.onerror = rej; img.src = url;
   });
 }
-
 function handleImages(files) {
   const list = document.getElementById('imgList');
   Array.from(files).forEach(f => {
     pendingImages.push(f);
-    const div = document.createElement('div'); div.className = 'uploaded-file';
-    div.innerHTML = `<i class="fas fa-image" style="color:var(--gold)"></i><span class="fn">${f.name.replace(/\.[^.]+$/, '.webp')}</span><span class="convert-badge">WebP</span><span class="fs">${(f.size / 1024).toFixed(0)}KB → 轉換中...</span><button class="rm-file" onclick="this.closest('.uploaded-file').remove()"><i class="fas fa-xmark"></i></button>`;
-    list.appendChild(div);
-    const bar = document.createElement('div'); bar.className = 'processing-bar show'; bar.innerHTML = '<div class="processing-fill"></div>';
-    div.appendChild(bar);
-    setTimeout(() => { bar.remove(); div.querySelector('.fs').textContent = `${Math.floor(f.size / 1024 * 0.35)}KB (已壓縮 65%)`; }, 2000);
+    const d = document.createElement('div'); d.className = 'uploaded-file';
+    d.innerHTML = `<i class="fas fa-image fi-icon"></i><span class="fi-name">${f.name.replace(/\.[^.]+$/,'.webp')}</span><span class="webp-tag">WebP</span><span class="fi-size">${(f.size/1024).toFixed(0)}KB</span>`;
+    list.appendChild(d);
   });
 }
-
 function handleFilesUpload(files) {
   const list = document.getElementById('fileList');
   Array.from(files).forEach(f => {
     pendingFiles.push(f);
-    const ext = f.name.split('.').pop().toUpperCase();
-    const icons = { PDF: 'fa-file-pdf', DOCX: 'fa-file-word', XLSX: 'fa-file-excel', default: 'fa-file' };
-    const div = document.createElement('div'); div.className = 'uploaded-file';
-    div.innerHTML = `<i class="fas ${icons[ext] || icons.default}"></i><span class="fn">${f.name}</span><span class="fs">${(f.size / 1024).toFixed(0)}KB</span><button class="rm-file" onclick="this.closest('.uploaded-file').remove()"><i class="fas fa-xmark"></i></button>`;
-    list.appendChild(div);
+    const d = document.createElement('div'); d.className = 'uploaded-file';
+    d.innerHTML = `<i class="fas fa-file fi-icon"></i><span class="fi-name">${f.name}</span><span class="fi-size">${(f.size/1024).toFixed(0)}KB</span>`;
+    list.appendChild(d);
   });
 }
-
 function dragOver(e, el) { e.preventDefault(); el.classList.add('drag'); }
-function dragLeave(el) { el.classList.remove('drag'); }
-function dropImg(e) { e.preventDefault(); document.getElementById('imgZone').classList.remove('drag'); handleImages(e.dataTransfer.files); }
-function dropFile(e) { e.preventDefault(); document.getElementById('fileZone').classList.remove('drag'); handleFilesUpload(e.dataTransfer.files); }
+function dragLeave(el) { if (el) el.classList.remove('drag'); }
+function dropImg(e)  { e.preventDefault(); dragLeave(document.getElementById('imgZone'));  handleImages(e.dataTransfer.files); }
+function dropFile(e) { e.preventDefault(); dragLeave(document.getElementById('fileZone')); handleFilesUpload(e.dataTransfer.files); }
 
 function confirmSubmit() {
-  const title = document.getElementById('postTitle')?.value?.trim();
+  const title  = document.getElementById('postTitle')?.value?.trim();
   const prompt = document.getElementById('promptEditor')?.innerText?.trim();
-  if (!title || !prompt) { submitPost(); return; } // 讓 submitPost 自己處理驗證錯誤
-  showConfirm('📤','確認送出審核？',`「${title}」將送交管理員審核，通過後才會上架。`,'確認送出','btn-primary', submitPost);
+  if (!title || !prompt) { submitPost(); return; }
+  showConfirm('📤','確認送出審核？',`「${title}」將送交管理員審核。`,'確認送出','btn-primary', submitPost);
 }
 
 async function submitPost() {
   if (!currentUser) { toast('請先登入', 'info'); return; }
-  const title = document.getElementById('postTitle').value.trim();
-  const prompt = document.getElementById('promptEditor').innerText.trim();
-  if (!title || !prompt) { toast('請填寫標題與提示詞', 'error'); return; }
-  const sensitiveFlags = SENSITIVE_WORDS.filter(w => (title + prompt).includes(w));
-  if (sensitiveFlags.length) { toast('內容含有敏感詞彙，無法提交', 'error'); return; }
+  const title  = document.getElementById('postTitle')?.value?.trim();
+  const prompt = document.getElementById('promptEditor')?.innerText?.trim();
+  if (!title)  { toast('請填寫標題', 'error'); return; }
+  if (!prompt) { toast('請填寫提示詞', 'error'); return; }
+  const flags = SENSITIVE_WORDS.filter(w => (title + prompt).includes(w));
+  if (flags.length) { toast('含有敏感詞，無法提交', 'error'); return; }
 
-  document.getElementById('submitBtn').disabled = true;
-  document.getElementById('submitBtn').innerHTML = '<i class="fas fa-spinner fa-spin"></i>提交中...';
-
-  const selectedCategory = document.getElementById('postCategory').value;
-  const selectedTool = getSelectedTool();
-  // 把「類別」和「工具」都放進 tags，schema 只有 tags 欄位
+  const selectedCategory = document.getElementById('postCategory')?.value || '';
+  const selectedTool = (() => {
+    const sel = document.getElementById('postTool')?.value;
+    if (sel === '其他（自行輸入）') return document.getElementById('postToolCustom')?.value?.trim() || '其他';
+    return sel || '';
+  })();
   const allTags = [...new Set([selectedTool, selectedCategory, ...uploadTags].filter(Boolean))];
 
-  const payload = {
-    user_id: currentUser.id,
-    title,
-    content_type: 'text',
-    tags: allTags,
-    prompt,
-    result_text: document.getElementById('resultEditor').innerText.trim() || null,
-    status: 'pending',
-    sensitive_flags: sensitiveFlags,
-  };
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>提交中...';
 
-  const { data: post, error } = await authPost('posts', payload);
-  if (error) { toast('提交失敗：' + error.message, 'error'); document.getElementById('submitBtn').disabled = false; document.getElementById('submitBtn').innerHTML = '<i class="fas fa-paper-plane"></i>送審'; return; }
+  const { data: post, error } = await authPost('posts', {
+    user_id: currentUser.id, title, content_type: 'text',
+    tags: allTags, prompt,
+    result_text: document.getElementById('resultEditor')?.innerText?.trim() || null,
+    status: 'pending', sensitive_flags: flags
+  });
 
-  // upload images
+  if (error || !post) {
+    toast('提交失敗：' + (error?.message || ''), 'error');
+    btn.disabled = false; btn.innerHTML = '<i class="fas fa-paper-plane"></i>送審';
+    return;
+  }
+
   for (const file of pendingImages) {
     try {
-      const webpBlob = await convertToWebP(file);
+      const blob = await convertToWebP(file);
       const fname = file.name.replace(/\.[^.]+$/, '.webp');
-      const path = `${post.id}/${Date.now()}_${fname}`;
-      const { data: imgUp, error: upErr } = await authStorageUpload(path, webpBlob, 'image/webp');
-      if (upErr) { console.warn('img upload err', upErr.message); }
-      else { await authPost('attachments', { post_id: post.id, file_name: fname, file_url: imgUp.publicUrl, file_type: 'image/webp', file_size: webpBlob.size, is_webp: true }); }
-    } catch (e) { console.warn('image upload failed', e); }
+      const path  = `${post.id}/${Date.now()}_${fname}`;
+      const { data: up } = await authStorageUpload(path, blob, 'image/webp');
+      if (up) await authPost('attachments', { post_id: post.id, file_name: fname, file_url: up.publicUrl, file_type: 'image/webp', file_size: blob.size, is_webp: true });
+    } catch(e) { console.warn('img upload:', e); }
   }
-  // upload files
   for (const file of pendingFiles) {
     try {
       const path = `${post.id}/${Date.now()}_${file.name}`;
-      const { data: fileUp, error: upErr2 } = await authStorageUpload(path, file, file.type);
-      if (upErr2) { console.warn('file upload err', upErr2.message); }
-      else { await authPost('attachments', { post_id: post.id, file_name: file.name, file_url: fileUp.publicUrl, file_type: file.type, file_size: file.size, is_webp: false }); }
-    } catch (e) { console.warn('file upload failed', e); }
+      const { data: up } = await authStorageUpload(path, file, file.type);
+      if (up) await authPost('attachments', { post_id: post.id, file_name: file.name, file_url: up.publicUrl, file_type: file.type, file_size: file.size, is_webp: false });
+    } catch(e) { console.warn('file upload:', e); }
   }
 
   document.getElementById('submitFormArea').style.display = 'none';
   document.getElementById('submitStatus').style.display = 'block';
-  document.getElementById('submitBtn').style.display = 'none';
-  toast('提交成功！等待審核中', 'success');
+  btn.style.display = 'none';
+  toast('已送出，等待審核 ✓', 'success');
   loadPendingCount();
 }
 
-function saveDraft() { if (!currentUser) { toast('請先登入', 'info'); return; } toast('草稿已儲存（本機）', 'info'); }
-
+function saveDraft() { toast('草稿功能僅供本機暫存', 'info'); }
 function resetUpload() {
   document.getElementById('submitFormArea').style.display = '';
   document.getElementById('submitStatus').style.display = 'none';
-  document.getElementById('submitBtn').style.display = '';
-  document.getElementById('submitBtn').disabled = false;
-  document.getElementById('submitBtn').innerHTML = '<i class="fas fa-paper-plane"></i>送審';
-  document.getElementById('postTitle').value = '';
-  document.getElementById('promptEditor').innerHTML = '';
-  document.getElementById('resultEditor').innerHTML = '';
-  document.getElementById('imgList').innerHTML = '';
-  document.getElementById('fileList').innerHTML = '';
+  const btn = document.getElementById('submitBtn');
+  btn.style.display = ''; btn.disabled = false; btn.innerHTML = '<i class="fas fa-paper-plane"></i>送審';
+  ['postTitle','tagInput'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  ['promptEditor','resultEditor'].forEach(id => { const el = document.getElementById(id); if (el) el.innerHTML = ''; });
+  ['imgList','fileList'].forEach(id => { const el = document.getElementById(id); if (el) el.innerHTML = ''; });
   uploadTags = []; pendingImages = []; pendingFiles = [];
   renderUploadTags();
 }
+function handleToolChange(val) {
+  const c = document.getElementById('postToolCustom');
+  if (c) c.style.display = val === '其他（自行輸入）' ? '' : 'none';
+}
 
 // =============================================
-// PROFILE
+// PROFILE / AVATAR
 // =============================================
-
-// 預設顏色大頭貼選項
 const AVATAR_PRESETS = [
-  { bg: 'linear-gradient(135deg,#c9a84c,#8b6914)', emoji: '' },
-  { bg: 'linear-gradient(135deg,#2980b9,#1a5276)', emoji: '' },
-  { bg: 'linear-gradient(135deg,#27ae60,#1a6b33)', emoji: '' },
-  { bg: 'linear-gradient(135deg,#8e44ad,#5b2c6f)', emoji: '' },
-  { bg: 'linear-gradient(135deg,#e74c3c,#922b21)', emoji: '' },
-  { bg: 'linear-gradient(135deg,#16a085,#0e6655)', emoji: '' },
-  { bg: 'linear-gradient(135deg,#d35400,#873600)', emoji: '' },
-  { bg: 'linear-gradient(135deg,#2c3e50,#1a252f)', emoji: '' },
+  { bg: 'linear-gradient(135deg,#c9a84c,#8b6914)' },
+  { bg: 'linear-gradient(135deg,#2980b9,#1a5276)' },
+  { bg: 'linear-gradient(135deg,#27ae60,#1a6b33)' },
+  { bg: 'linear-gradient(135deg,#8e44ad,#5b2c6f)' },
+  { bg: 'linear-gradient(135deg,#e74c3c,#922b21)' },
+  { bg: 'linear-gradient(135deg,#16a085,#0e6655)' },
+  { bg: 'linear-gradient(135deg,#d35400,#873600)' },
+  { bg: 'linear-gradient(135deg,#2c3e50,#1a252f)' },
 ];
-
-function getAvatarStyle() {
-  if (currentProfile?.avatar_url?.startsWith('preset:')) {
-    const idx = parseInt(currentProfile.avatar_url.replace('preset:',''));
-    return AVATAR_PRESETS[idx]?.bg || AVATAR_PRESETS[0].bg;
-  }
-  return 'linear-gradient(135deg,var(--gold),#8b6914)';
-}
-
-function getAvatarContent() {
-  if (currentProfile?.avatar_url?.startsWith('http')) {
-    return `<img src="${currentProfile.avatar_url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
-  }
-  return (currentProfile?.name || currentUser.email).slice(0,1);
-}
 
 async function renderProfile() {
   if (!currentUser) { nav('login'); return; }
+  const profileEl = document.getElementById('profileContent');
+  if (!profileEl) return;
   const { data: myPosts } = await db.from('posts').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: false });
   const posts = myPosts || [];
-  const totalViews = posts.reduce((s, p) => s + (p.view_count || 0), 0);
   const totalLikes = posts.reduce((s, p) => s + (p.like_count || 0), 0);
-  const totalBookmarks = posts.reduce((s, p) => s + (p.bookmark_count || 0), 0);
-  const avatarStyle = getAvatarStyle();
+  const totalBkm   = posts.reduce((s, p) => s + (p.bookmark_count || 0), 0);
+  const avatarStyle   = getAvatarStyle();
   const avatarContent = getAvatarContent();
-  const isImageAvatar = currentProfile?.avatar_url?.startsWith('http');
 
-  document.getElementById('profileContent').innerHTML = `
+  profileEl.innerHTML = `
     <div class="profile-header">
       <div class="profile-avatar-wrap" onclick="toggleEditPanel()">
-        <div class="profile-avatar" id="mainAvatar" style="background:${avatarStyle}">
-          ${avatarContent}
-        </div>
+        <div class="profile-avatar" id="mainAvatar" style="background:${avatarStyle};overflow:hidden">${avatarContent}</div>
         <div class="avatar-overlay"><i class="fas fa-pen"></i></div>
       </div>
       <div class="profile-info">
-        <h2 id="profileNameDisplay">${currentProfile?.name || '館員'}</h2>
-        <p>${currentUser.email} · ${currentProfile?.role === 'admin' ? '管理員' : '館員'}</p>
+        <h2>${currentProfile?.name || '館員'}</h2>
+        <p>${currentUser.email}${currentProfile?.role === 'admin' ? ' · 管理員' : ''}</p>
         <div class="profile-stats">
-          <div><div class="profile-stat-num">${posts.filter(p => p.status === 'approved').length}</div><div class="profile-stat-label">已上架</div></div>
-          <div><div class="profile-stat-num">${posts.filter(p => p.status === 'pending').length}</div><div class="profile-stat-label">審核中</div></div>
-          <div><div class="profile-stat-num">${totalViews}</div><div class="profile-stat-label">總瀏覽</div></div>
+          <div><div class="profile-stat-num">${posts.filter(p=>p.status==='approved').length}</div><div class="profile-stat-label">已上架</div></div>
+          <div><div class="profile-stat-num">${posts.filter(p=>p.status==='pending').length}</div><div class="profile-stat-label">審核中</div></div>
           <div><div class="profile-stat-num">${totalLikes}</div><div class="profile-stat-label">總按讚</div></div>
-          <div><div class="profile-stat-num">${totalBookmarks}</div><div class="profile-stat-label">總收藏</div></div>
+          <div><div class="profile-stat-num">${totalBkm}</div><div class="profile-stat-label">總收藏</div></div>
         </div>
       </div>
-      <button class="btn btn-outline btn-sm" style="margin-left:auto;align-self:flex-start" onclick="toggleEditPanel()">
-        <i class="fas fa-pen"></i>編輯資料
-      </button>
+      <button class="btn btn-outline btn-sm" style="margin-left:auto;align-self:flex-start" onclick="toggleEditPanel()"><i class="fas fa-pen"></i>編輯</button>
     </div>
 
-    <!-- 編輯面板（預設隱藏）-->
     <div class="edit-panel" id="editPanel" style="display:none">
-      <!-- 分頁切換 -->
       <div style="display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:1.25rem">
-        <button class="edit-tab active" id="editTab-profile" onclick="switchEditTab('profile')">
-          <i class="fas fa-user-pen"></i>基本資料
-        </button>
-        <button class="edit-tab" id="editTab-password" onclick="switchEditTab('password')">
-          <i class="fas fa-lock"></i>修改密碼
-        </button>
+        <button class="edit-tab active" id="editTab-profile" onclick="switchEditTab('profile')"><i class="fas fa-user-pen"></i>基本資料</button>
+        <button class="edit-tab" id="editTab-password" onclick="switchEditTab('password')"><i class="fas fa-lock"></i>修改密碼</button>
       </div>
-
-      <!-- 基本資料 -->
       <div id="editSection-profile">
         <div class="form-group">
           <label class="form-label">顯示名稱</label>
-          <input type="text" class="form-input" id="editName"
-            value="${currentProfile?.name || ''}" placeholder="你的名字">
+          <input type="text" class="form-input" id="editName" value="${currentProfile?.name || ''}">
         </div>
         <div class="form-group">
           <label class="form-label">大頭貼</label>
           <div style="display:flex;align-items:center;gap:16px;margin-bottom:10px">
-            <div id="previewAvatar" class="profile-avatar" style="background:${avatarStyle};flex-shrink:0">
-              ${avatarContent}
-            </div>
-            <div style="font-size:.82rem;color:var(--text3);line-height:1.7">
-              選擇下方顏色，或上傳自訂圖片<br>
-              <span style="font-size:.75rem">建議尺寸：200×200px 以上</span>
-            </div>
+            <div id="previewAvatar" class="profile-avatar" style="background:${avatarStyle};overflow:hidden;flex-shrink:0">${avatarContent}</div>
+            <div style="font-size:.82rem;color:var(--text3);line-height:1.7">選擇顏色或上傳圖片<br><span style="font-size:.75rem">建議 200×200px 以上</span></div>
           </div>
           <div class="avatar-picker" id="avatarPicker">
-            ${AVATAR_PRESETS.map((p, i) => `
-              <div class="avatar-option ${currentProfile?.avatar_url === 'preset:'+i ? 'selected' : ''}"
-                style="background:${p.bg}"
-                onclick="selectPresetAvatar(${i})"
-                title="顏色 ${i+1}">
-              </div>`).join('')}
-            <label class="avatar-upload-btn" title="上傳自訂圖片">
-              <i class="fas fa-camera"></i>
-              <input type="file" accept="image/*" style="display:none" onchange="uploadAvatarImage(this.files[0])">
-            </label>
+            ${AVATAR_PRESETS.map((p, i) => `<div class="avatar-option ${currentProfile?.avatar_url==='preset:'+i?'selected':''}" style="background:${p.bg}" onclick="selectPresetAvatar(${i})"></div>`).join('')}
+            <label class="avatar-upload-btn" title="上傳圖片"><i class="fas fa-camera"></i><input type="file" accept="image/*" style="display:none" onchange="uploadAvatarImage(this.files[0])"></label>
           </div>
         </div>
         <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1rem">
           <button class="btn btn-outline btn-sm" onclick="toggleEditPanel()">取消</button>
-          <button class="btn btn-primary btn-sm" onclick="saveProfile()">
-            <i class="fas fa-check"></i>儲存變更
-          </button>
+          <button class="btn btn-primary btn-sm" onclick="saveProfile()"><i class="fas fa-check"></i>儲存</button>
         </div>
       </div>
-
-      <!-- 修改密碼 -->
       <div id="editSection-password" style="display:none">
         <div class="form-group">
           <label class="form-label">新密碼</label>
-          <div style="position:relative">
-            <input type="password" class="form-input" id="newPwd" placeholder="至少 8 位" autocomplete="new-password" style="padding-right:40px" oninput="updatePwdStrength(this.value)">
-            <button onclick="togglePwdVisibility('newPwd','eyeNew')" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text3);cursor:pointer;font-size:14px">
-              <i class="fas fa-eye" id="eyeNew"></i>
-            </button>
-          </div>
+          <input type="password" class="form-input" id="newPwd" placeholder="至少 8 位" autocomplete="new-password">
         </div>
         <div class="form-group">
           <label class="form-label">確認新密碼</label>
-          <div style="position:relative">
-            <input type="password" class="form-input" id="confirmPwd" placeholder="再輸入一次" autocomplete="new-password" style="padding-right:40px" onkeydown="if(event.key==='Enter')changePassword()">
-            <button onclick="togglePwdVisibility('confirmPwd','eyeConfirm')" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text3);cursor:pointer;font-size:14px">
-              <i class="fas fa-eye" id="eyeConfirm"></i>
-            </button>
-          </div>
-        </div>
-        <div id="pwdStrength" style="margin-bottom:.8rem;font-size:.78rem;display:none">
-          <div style="display:flex;gap:4px;margin-bottom:3px">
-            <div class="pwd-bar" id="pbar1"></div>
-            <div class="pwd-bar" id="pbar2"></div>
-            <div class="pwd-bar" id="pbar3"></div>
-            <div class="pwd-bar" id="pbar4"></div>
-          </div>
-          <span id="pwdStrengthLabel" style="color:var(--text3)"></span>
+          <input type="password" class="form-input" id="confirmPwd" placeholder="再輸入一次" onkeydown="if(event.key==='Enter')changePassword()">
         </div>
         <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1rem">
           <button class="btn btn-outline btn-sm" onclick="toggleEditPanel()">取消</button>
-          <button class="btn btn-primary btn-sm" onclick="changePassword()">
-            <i class="fas fa-key"></i>確認變更
-          </button>
+          <button class="btn btn-primary btn-sm" onclick="changePassword()"><i class="fas fa-key"></i>確認變更</button>
         </div>
       </div>
     </div>
@@ -1902,74 +1689,133 @@ async function renderProfile() {
       : `<div class="cards-grid">${posts.map(p => `
         <div class="card" onclick="openPost('${p.id}')">
           <div class="card-tags">
-            ${p.tool ? `<span class="tag ai">${p.tool}</span>` : ''}
-            <span class="status-badge ${p.status === 'pending' ? 'status-pending' : p.status === 'approved' ? 'status-approved' : 'status-rejected'}" style="margin-left:auto">${p.status === 'pending' ? '審核中' : p.status === 'approved' ? '已上架' : '已拒絕'}</span>
+            ${(p.tags||[]).slice(0,2).map(t=>`<span class="tag">${t}</span>`).join('')}
+            <span class="status-badge status-${p.status}" style="margin-left:auto">${p.status==='pending'?'審核中':p.status==='approved'?'已上架':'已拒絕'}</span>
           </div>
           <div class="card-title">${p.title}</div>
           <div class="card-meta" style="margin-top:8px">
             <div class="card-stats">
-              <span class="card-stat"><i class="fas fa-eye" style="font-size:11px"></i>${p.view_count || 0}</span>
-              <span class="card-stat"><i class="fas fa-heart" style="font-size:11px"></i>${p.like_count || 0}</span>
+              <span class="card-stat"><i class="fas fa-eye" style="font-size:11px"></i>${p.view_count||0}</span>
+              <span class="card-stat"><i class="fas fa-heart" style="font-size:11px"></i>${p.like_count||0}</span>
             </div>
-            ${p.status === 'rejected' ? `<button class="btn btn-outline btn-sm" style="margin-left:auto;font-size:11px;padding:3px 8px" onclick="event.stopPropagation();resubmitPost('${p.id}')"><i class="fas fa-rotate-right"></i> 重新提交</button>` : ''}
+            ${p.status==='rejected'?`<button class="btn btn-outline btn-sm" style="margin-left:auto;font-size:11px;padding:3px 8px" onclick="event.stopPropagation();resubmitPost('${p.id}')"><i class="fas fa-rotate-right"></i>重新提交</button>`:''}
           </div>
         </div>`).join('')}</div>`}`;
 }
 
-// ── 確認對話框 ──
-let _confirmCallback = null;
-function showConfirm(icon, title, msg, btnLabel, btnClass, cb) {
-  document.getElementById('confirmIcon').textContent = icon;
-  document.getElementById('confirmTitle').textContent = title;
-  document.getElementById('confirmMsg').textContent = msg;
-  const btn = document.getElementById('confirmOkBtn');
-  btn.textContent = btnLabel;
-  btn.className = 'btn ' + btnClass;
-  _confirmCallback = cb;
-  document.getElementById('confirmOverlay').classList.add('show');
+function toggleEditPanel() {
+  const panel = document.getElementById('editPanel');
+  if (!panel) return;
+  const isHidden = panel.style.display === 'none';
+  panel.style.display = isHidden ? '' : 'none';
+  if (isHidden) switchEditTab('profile');
 }
-function closeConfirm() {
-  document.getElementById('confirmOverlay').classList.remove('show');
-  _confirmCallback = null;
+function switchEditTab(tab) {
+  ['profile','password'].forEach(t => {
+    document.getElementById('editTab-'+t)?.classList.toggle('active', t===tab);
+    const s = document.getElementById('editSection-'+t); if (s) s.style.display = t===tab?'':'none';
+  });
 }
-function doConfirm() {
-  closeConfirm();
-  if (_confirmCallback) _confirmCallback();
+function selectPresetAvatar(idx) {
+  document.querySelectorAll('.avatar-option').forEach(el => el.classList.remove('selected'));
+  document.querySelectorAll('.avatar-option')[idx]?.classList.add('selected');
+  const bg = AVATAR_PRESETS[idx].bg;
+  const preview = document.getElementById('previewAvatar');
+  if (preview) { preview.style.background = bg; preview.innerHTML = (currentProfile?.name||'?').slice(0,1); }
+  window._pendingAvatarUrl = 'preset:' + idx;
+}
+async function uploadAvatarImage(file) {
+  if (!file) return;
+  if (file.size > 5*1024*1024) { toast('圖片不能超過 5MB', 'error'); return; }
+  toast('上傳中...', 'info');
+  let blob = file;
+  try {
+    blob = await new Promise((res, rej) => {
+      const img = new Image(); const url = URL.createObjectURL(file);
+      img.onload = () => {
+        const size = Math.min(img.width, img.height);
+        const c = document.createElement('canvas'); c.width = 200; c.height = 200;
+        c.getContext('2d').drawImage(img, (img.width-size)/2, (img.height-size)/2, size, size, 0, 0, 200, 200);
+        c.toBlob(b => { URL.revokeObjectURL(url); b ? res(b) : rej(); }, 'image/webp', 0.9);
+      };
+      img.onerror = rej; img.src = url;
+    });
+  } catch(e) { /* use original */ }
+  const path = `avatars/${currentUser.id}_${Date.now()}.webp`;
+  const { data, error } = await authStorageUpload(path, blob, 'image/webp');
+  if (error) { toast('上傳失敗：' + error.message, 'error'); return; }
+  window._pendingAvatarUrl = data.publicUrl;
+  const preview = document.getElementById('previewAvatar');
+  if (preview) { preview.style.background = 'none'; preview.innerHTML = `<img src="${data.publicUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`; }
+  document.querySelectorAll('.avatar-option').forEach(el => el.classList.remove('selected'));
+  toast('圖片上傳成功', 'success');
+}
+async function saveProfile() {
+  const newName = document.getElementById('editName')?.value?.trim();
+  if (!newName) { toast('名稱不能為空', 'error'); return; }
+  const updates = { name: newName };
+  if (window._pendingAvatarUrl !== undefined) updates.avatar_url = window._pendingAvatarUrl;
+  const { error } = await authPatch('profiles', `id=eq.${currentUser.id}`, updates);
+  if (error) { toast('儲存失敗：' + error.message, 'error'); return; }
+  currentProfile = { ...currentProfile, ...updates };
+  window._pendingAvatarUrl = undefined;
+  toast('已儲存 ✓', 'success');
+  updateUserUI();
+  renderProfile();
 }
 
+// =============================================
+// RESUBMIT
+// =============================================
 let _editingPostId = null;
 let _editTags = [];
 let _editPendingImages = [];
 let _editPendingFiles = [];
 
-function handleEditToolChange(val) {
-  const c = document.getElementById('editPostToolCustom');
-  c.style.display = val === '其他（自行輸入）' ? '' : 'none';
+async function resubmitPost(id) {
+  const { data: post } = await db.from('posts').select('*').eq('id', id).single();
+  if (!post) { toast('載入失敗', 'error'); return; }
+  _editingPostId = id;
+  _editTags = (post.tags||[]).filter(t => !['ChatGPT','Claude','Gemini','Midjourney','文字生成','圖像生成','資料分析','創意寫作','教育','翻譯'].includes(t));
+  _editPendingImages = []; _editPendingFiles = [];
+  document.getElementById('editPostTitle').value = post.title || '';
+  document.getElementById('editPostPrompt').innerHTML = (post.prompt||'').split('\n').join('<br>');
+  document.getElementById('editPostResult').innerHTML = (post.result_text||'').split('\n').join('<br>');
+  document.getElementById('editImgList').innerHTML = '';
+  document.getElementById('editFileList').innerHTML = '';
+  document.getElementById('editSensitiveAlert').style.display = 'none';
+  const knownTools = ['ChatGPT','Claude','Gemini','Midjourney'];
+  const postTool = (post.tags||[]).find(t => knownTools.includes(t));
+  const toolSel = document.getElementById('editPostTool');
+  if (toolSel && postTool) toolSel.value = postTool;
+  const cats = ['文字生成','圖像生成','資料分析','創意寫作','教育','翻譯'];
+  const postCat = (post.tags||[]).find(t => cats.includes(t));
+  const catSel = document.getElementById('editPostCategory');
+  if (catSel && postCat) catSel.value = postCat;
+  renderEditTags();
+  document.getElementById('editPostModal').classList.add('show');
 }
+
 function fmtEdit(cmd) { document.getElementById('editPostPrompt')?.focus(); document.execCommand(cmd,false,null); }
 function fmtEditResult(cmd) { document.getElementById('editPostResult')?.focus(); document.execCommand(cmd,false,null); }
-
+function handleEditToolChange(val) { const c = document.getElementById('editPostToolCustom'); if(c) c.style.display = val==='其他（自行輸入）'?'':'none'; }
 function addEditTag(e) {
-  if (e.key !== 'Enter' && e.key !== ',') return;
-  e.preventDefault();
+  if (e.key!=='Enter' && e.key!==',') return; e.preventDefault();
   const v = e.target.value.trim();
   if (v && !_editTags.includes(v)) { _editTags.push(v); renderEditTags(); }
   e.target.value = '';
 }
-function removeEditTag(t) { _editTags = _editTags.filter(x => x !== t); renderEditTags(); }
+function removeEditTag(t) { _editTags = _editTags.filter(x=>x!==t); renderEditTags(); }
 function renderEditTags() {
-  const area = document.getElementById('editTagsArea');
-  if (!area) return;
-  area.querySelectorAll('.tag-chip').forEach(x => x.remove());
+  const area = document.getElementById('editTagsArea'); if (!area) return;
+  area.querySelectorAll('.tag-chip').forEach(x=>x.remove());
   const inp = document.getElementById('editTagInput');
   _editTags.forEach(t => {
-    const chip = document.createElement('span');
-    chip.className = 'tag-chip';
+    const chip = document.createElement('span'); chip.className = 'tag-chip';
     chip.innerHTML = `${t}<button onclick="removeEditTag('${t}')">×</button>`;
     area.insertBefore(chip, inp);
   });
 }
-
 function handleEditImages(files) {
   const list = document.getElementById('editImgList');
   Array.from(files).forEach(f => {
@@ -1988,40 +1834,13 @@ function handleEditFiles(files) {
     list.appendChild(d);
   });
 }
-function dropEditImg(e) { e.preventDefault(); dragLeave(document.getElementById('editPostModal').querySelector('.upload-zone')); handleEditImages(e.dataTransfer.files); }
+function dropEditImg(e)  { e.preventDefault(); handleEditImages(e.dataTransfer.files); }
 function dropEditFile(e) { e.preventDefault(); handleEditFiles(e.dataTransfer.files); }
 
-async function resubmitPost(id) {
-  const { data: post } = await db.from('posts').select('*').eq('id', id).single();
-  if (!post) { toast('載入失敗', 'error'); return; }
-  _editingPostId = id;
-  _editTags = (post.tags || []).filter(t => !['ChatGPT','Claude','Gemini','Midjourney','文字生成','圖像生成','資料分析','創意寫作','教育','翻譯'].includes(t));
-  _editPendingImages = [];
-  _editPendingFiles = [];
-  document.getElementById('editPostTitle').value = post.title || '';
-  document.getElementById('editPostPrompt').innerHTML = (post.prompt || '').split('\n').join('<br>');
-  document.getElementById('editPostResult').innerHTML = (post.result_text || '').split('\n').join('<br>');
-  document.getElementById('editImgList').innerHTML = '';
-  document.getElementById('editFileList').innerHTML = '';
-  document.getElementById('editSensitiveAlert').style.display = 'none';
-  renderEditTags();
-  // 設定 tool
-  const toolSel = document.getElementById('editPostTool');
-  const knownTools = ['ChatGPT','Claude','Gemini','Midjourney'];
-  const postTool = (post.tags||[]).find(t => knownTools.includes(t));
-  if (postTool) toolSel.value = postTool;
-  // 設定 category
-  const catSel = document.getElementById('editPostCategory');
-  const cats = ['文字生成','圖像生成','資料分析','創意寫作','教育','翻譯'];
-  const postCat = (post.tags||[]).find(t => cats.includes(t));
-  if (postCat) catSel.value = postCat;
-  document.getElementById('editPostModal').classList.add('show');
-}
-
 async function saveAndResubmit() {
-  const title = document.getElementById('editPostTitle').value.trim();
-  const prompt = document.getElementById('editPostPrompt').innerText.trim();
-  const result_text = document.getElementById('editPostResult').innerText.trim() || null;
+  const title  = document.getElementById('editPostTitle')?.value?.trim();
+  const prompt = document.getElementById('editPostPrompt')?.innerText?.trim();
+  const result = document.getElementById('editPostResult')?.innerText?.trim() || null;
   if (!title || !prompt) { toast('標題和提示詞不能為空', 'error'); return; }
   const flags = SENSITIVE_WORDS.filter(w => (title+prompt).includes(w));
   if (flags.length) {
@@ -2029,290 +1848,172 @@ async function saveAndResubmit() {
     document.getElementById('editSensitiveAlert').style.display = 'flex';
     return;
   }
-  const tool = document.getElementById('editPostTool').value === '其他（自行輸入）'
-    ? (document.getElementById('editPostToolCustom').value.trim() || '其他')
-    : document.getElementById('editPostTool').value;
-  const cat = document.getElementById('editPostCategory').value;
+  const tool = document.getElementById('editPostTool')?.value === '其他（自行輸入）'
+    ? (document.getElementById('editPostToolCustom')?.value?.trim() || '其他')
+    : (document.getElementById('editPostTool')?.value || '');
+  const cat = document.getElementById('editPostCategory')?.value || '';
   const allTags = [...new Set([tool, cat, ..._editTags].filter(Boolean))];
-  const { error } = await authPatch('posts', `id=eq.${_editingPostId}`, { title, prompt, result_text, tags: allTags, status: 'pending', sensitive_flags: [] });
+  const { error } = await authPatch('posts', `id=eq.${_editingPostId}`, { title, prompt, result_text: result, tags: allTags, status: 'pending', sensitive_flags: [] });
   if (error) { toast('提交失敗：' + error.message, 'error'); return; }
-  // upload new images
   for (const file of _editPendingImages) {
     try {
-      const webpBlob = await convertToWebP(file);
-      const fname = file.name.replace(/\.[^.]+$/,'.webp');
+      const blob = await convertToWebP(file); const fname = file.name.replace(/\.[^.]+$/,'.webp');
       const path = `${_editingPostId}/${Date.now()}_${fname}`;
-      const { data: rup } = await authStorageUpload(path, webpBlob, 'image/webp');
-      if (rup) { await authPost('attachments', { post_id:_editingPostId, file_name:fname, file_url:rup.publicUrl, file_type:'image/webp', file_size:webpBlob.size, is_webp:true }); }
+      const { data: up } = await authStorageUpload(path, blob, 'image/webp');
+      if (up) await authPost('attachments', { post_id:_editingPostId, file_name:fname, file_url:up.publicUrl, file_type:'image/webp', file_size:blob.size, is_webp:true });
     } catch(e) { console.warn(e); }
   }
-  // upload new files
   for (const file of _editPendingFiles) {
     try {
       const path = `${_editingPostId}/${Date.now()}_${file.name}`;
-      const { data: rfup } = await authStorageUpload(path, file, file.type);
-      if (rfup) { await authPost('attachments', { post_id:_editingPostId, file_name:file.name, file_url:rfup.publicUrl, file_type:file.type, file_size:file.size, is_webp:false }); }
+      const { data: up } = await authStorageUpload(path, file, file.type);
+      if (up) await authPost('attachments', { post_id:_editingPostId, file_name:file.name, file_url:up.publicUrl, file_type:file.type, file_size:file.size, is_webp:false });
     } catch(e) { console.warn(e); }
   }
   document.getElementById('editPostModal').classList.remove('show');
-  toast('已重新提交，等待審核 ✓', 'success');
+  toast('已重新提交 ✓', 'success');
   renderProfile();
 }
 
-function toggleEditPanel() {
-  const panel = document.getElementById('editPanel');
-  if (!panel) return;
-  const isHidden = panel.style.display === 'none';
-  panel.style.display = isHidden ? '' : 'none';
-  if (isHidden) switchEditTab('profile'); // 每次展開都重置到第一頁
-}
+// =============================================
+// AI LINKS
+// =============================================
+const FALLBACK_AI_LINKS = [
+  { id: null, name: 'ChatGPT', url: 'https://chatgpt.com', logo: 'https://upload.wikimedia.org/wikipedia/commons/0/04/ChatGPT_logo.svg', sort_order: 1 },
+  { id: null, name: 'Meta AI',  url: 'https://www.meta.ai', logo: '', sort_order: 2 },
+  { id: null, name: 'Gemini',  url: 'https://gemini.google.com', logo: 'https://upload.wikimedia.org/wikipedia/commons/8/8a/Google_Gemini_logo.svg', sort_order: 3 },
+  { id: null, name: 'Claude',  url: 'https://claude.ai', logo: '', sort_order: 4 },
+];
+let _aiLinksCache = null;
 
-function switchEditTab(tab) {
-  ['profile','password'].forEach(t => {
-    document.getElementById('editTab-' + t)?.classList.toggle('active', t === tab);
-    const sec = document.getElementById('editSection-' + t);
-    if (sec) sec.style.display = t === tab ? '' : 'none';
-  });
-  // 切換到密碼頁時清空欄位
-  if (tab === 'password') {
-    const np = document.getElementById('newPwd');
-    const cp = document.getElementById('confirmPwd');
-    if (np) np.value = '';
-    if (cp) cp.value = '';
-    updatePwdStrength('');
-  }
-}
-
-function togglePwdVisibility(inputId, iconId) {
-  const input = document.getElementById(inputId);
-  const icon  = document.getElementById(iconId);
-  if (!input || !icon) return;
-  const isHidden = input.type === 'password';
-  input.type = isHidden ? 'text' : 'password';
-  icon.className = isHidden ? 'fas fa-eye-slash' : 'fas fa-eye';
-}
-
-function updatePwdStrength(pwd) {
-  const wrap = document.getElementById('pwdStrength');
-  const label = document.getElementById('pwdStrengthLabel');
-  if (!wrap) return;
-  if (!pwd) { wrap.style.display = 'none'; return; }
-  wrap.style.display = '';
-  let score = 0;
-  if (pwd.length >= 8)  score++;
-  if (/[A-Z]/.test(pwd)) score++;
-  if (/[0-9]/.test(pwd)) score++;
-  if (/[^A-Za-z0-9]/.test(pwd)) score++;
-  const levels = ['','weak','fair','good','strong'];
-  const labels = ['','太短','普通','良好','強'];
-  const colors = ['','#e74c3c','#f39c12','#27ae60','#2ecc71'];
-  [1,2,3,4].forEach(i => {
-    const bar = document.getElementById('pbar' + i);
-    if (bar) bar.className = 'pwd-bar ' + (i <= score ? levels[score] : '');
-  });
-  if (label) { label.textContent = '強度：' + (labels[score] || ''); label.style.color = colors[score] || 'var(--text3)'; }
-}
-
-async function changePassword() {
-  const newPwd     = document.getElementById('newPwd')?.value || '';
-  const confirmPwd = document.getElementById('confirmPwd')?.value || '';
-  if (!newPwd) { toast('請輸入新密碼', 'error'); return; }
-  if (newPwd.length < 8) { toast('密碼至少需要 8 位', 'error'); return; }
-  if (newPwd !== confirmPwd) { toast('兩次密碼輸入不一致', 'error'); return; }
-  const btn = document.querySelector('#editSection-password .btn-primary');
-  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>處理中...'; }
-  const { error } = await db.auth.updateUser({ password: newPwd });
-  if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-key"></i>確認變更'; }
-  if (error) {
-    toast('密碼變更失敗：' + error.message, 'error');
-    return;
-  }
-  toast('🔐 密碼已成功變更', 'success');
-  document.getElementById('newPwd').value = '';
-  document.getElementById('confirmPwd').value = '';
-  updatePwdStrength('');
-  toggleEditPanel();
-}
-
-function selectPresetAvatar(idx) {
-  // Update selection UI
-  document.querySelectorAll('.avatar-option').forEach(el => el.classList.remove('selected'));
-  document.querySelectorAll('.avatar-option')[idx]?.classList.add('selected');
-  // Update preview
-  const bg = AVATAR_PRESETS[idx].bg;
-  const preview = document.getElementById('previewAvatar');
-  if (preview) {
-    preview.style.background = bg;
-    preview.innerHTML = (currentProfile?.name || currentUser.email).slice(0,1);
-  }
-  // Store pending choice
-  window._pendingAvatarUrl = 'preset:' + idx;
-}
-
-async function uploadAvatarImage(file) {
-  if (!file) return;
-  if (file.size > 5 * 1024 * 1024) { toast('圖片不能超過 5MB', 'error'); return; }
-  toast('上傳中...', 'info');
-
-  // Convert to WebP
-  let blob = file;
+async function loadAiLinks() {
   try {
-    blob = await new Promise((res, rej) => {
-      const img = new Image();
-      const url = URL.createObjectURL(file);
-      img.onload = () => {
-        // Crop to square
-        const size = Math.min(img.width, img.height);
-        const c = document.createElement('canvas');
-        c.width = 200; c.height = 200;
-        c.getContext('2d').drawImage(img,
-          (img.width - size)/2, (img.height - size)/2, size, size, 0, 0, 200, 200);
-        c.toBlob(b => { URL.revokeObjectURL(url); b ? res(b) : rej(); }, 'image/webp', 0.9);
-      };
-      img.onerror = rej; img.src = url;
-    });
-  } catch(e) { /* use original */ }
-
-  const path = `avatars/${currentUser.id}_${Date.now()}.webp`;
-  const { data, error } = await authStorageUpload(path, blob, 'image/webp');
-  if (error) { toast('上傳失敗：' + error.message, 'error'); return; }
-  const pub = data;
-  window._pendingAvatarUrl = pub?.publicUrl || '';
-
-  // Update preview
-  const preview = document.getElementById('previewAvatar');
-  if (preview) {
-    preview.style.background = 'none';
-    preview.innerHTML = `<img src="${pub.publicUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
+    const { data, error } = await db.from('ai_links').select('*').order('sort_order');
+    if (error || !data) { _aiLinksCache = FALLBACK_AI_LINKS; return _aiLinksCache; }
+    _aiLinksCache = data.length > 0 ? data : FALLBACK_AI_LINKS;
+    return _aiLinksCache;
+  } catch(e) { _aiLinksCache = FALLBACK_AI_LINKS; return _aiLinksCache; }
+}
+async function saveAiLinks(links) {
+  for (let i = 0; i < links.length; i++) {
+    if (links[i].id) await authPatch('ai_links', `id=eq.${links[i].id}`, { sort_order: i+1 });
   }
-  document.querySelectorAll('.avatar-option').forEach(el => el.classList.remove('selected'));
-  toast('圖片上傳成功', 'success');
+  _aiLinksCache = links;
 }
+async function renderAiLinks() {
+  try {
+    const container = document.getElementById('aiLinksContainer');
+    if (!container) return;
+    const links = await loadAiLinks();
+    const isAdmin = currentProfile?.role === 'admin';
+    container.innerHTML = links.map((l, i) => `
+      <a class="ai-link" href="${l.url}" target="_blank" rel="noopener" onclick="event.stopPropagation()">
+        ${l.logo ? `<img src="${l.logo}" alt="${l.name}" width="20" height="20" onerror="this.style.display='none'">` : `<span style="width:20px;height:20px;border-radius:4px;background:linear-gradient(135deg,var(--gold),#8b6914);display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#0f0e0d;flex-shrink:0">${l.name.slice(0,1)}</span>`}
+        <span>${l.name}</span>
+        ${isAdmin ? `<button class="rm-ai" onclick="event.preventDefault();event.stopPropagation();removeAiLink('${l.id}')"><i class="fas fa-xmark"></i></button>` : ''}
+      </a>`).join('') +
+      (isAdmin ? `<button class="ai-link-manage-btn" onclick="openAiMgr()"><i class="fas fa-plus"></i> 新增</button>` : '');
+  } catch(e) { console.warn('renderAiLinks:', e); }
+}
+async function removeAiLink(id) {
+  await authDelete('ai_links', `id=eq.${id}`);
+  await renderAiLinks();
+}
+async function openAiMgr() {
+  document.getElementById('aiMgrModal').classList.add('show');
+  await renderAiMgrList();
+}
+async function renderAiMgrList() {
+  const links = await loadAiLinks();
+  const el = document.getElementById('aiMgrList');
+  if (!el) return;
+  if (!links.length) { el.innerHTML = '<div style="font-size:.82rem;color:var(--text3);padding:.5rem 0">尚無連結</div>'; return; }
+  el.innerHTML = `<div style="font-size:.78rem;color:var(--text3);margin-bottom:6px"><i class="fas fa-grip-vertical" style="margin-right:4px"></i>拖曳可調整順序</div>` +
+    links.map((l, i) => `
+    <div class="ai-mgr-row" draggable="true" ondragstart="aiDragStart(event,${i})" ondragover="aiDragOver(event)" ondrop="aiDrop(event,${i})" ondragend="aiDragEnd()" id="aiRow${i}">
+      <i class="fas fa-grip-vertical" style="color:var(--text3);cursor:grab;font-size:13px;flex-shrink:0"></i>
+      ${l.logo ? `<img class="ai-mgr-logo" src="${l.logo}" alt="${l.name}" onerror="this.style.display='none'">` : `<div class="ai-mgr-logo-placeholder">${l.name.slice(0,1)}</div>`}
+      <div style="flex:1;min-width:0"><div style="font-size:.88rem;font-weight:600">${l.name}</div><div style="font-size:.75rem;color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${l.url}</div></div>
+      <button class="btn btn-danger btn-sm" onclick="removeAiLink('${l.id}');renderAiMgrList()"><i class="fas fa-trash"></i></button>
+    </div>`).join('');
+}
+let _aiDragFrom = null;
+function aiDragStart(e,i) { _aiDragFrom=i; e.dataTransfer.effectAllowed='move'; e.currentTarget.style.opacity='.4'; }
+function aiDragOver(e) { e.preventDefault(); e.dataTransfer.dropEffect='move'; }
+async function aiDrop(e,i) {
+  e.preventDefault();
+  if (_aiDragFrom===null || _aiDragFrom===i) return;
+  const links = _aiLinksCache ? [..._aiLinksCache] : await loadAiLinks();
+  const moved = links.splice(_aiDragFrom,1)[0]; links.splice(i,0,moved);
+  await saveAiLinks(links); await renderAiLinks(); await renderAiMgrList(); _aiDragFrom=null;
+}
+function aiDragEnd() { document.querySelectorAll('.ai-mgr-row').forEach(r=>r.style.opacity='1'); _aiDragFrom=null; }
 
-async function saveProfile() {
-  const newName = document.getElementById('editName')?.value?.trim();
-  if (!newName) { toast('名稱不能為空', 'error'); return; }
-
-  const updates = { name: newName };
-  if (window._pendingAvatarUrl !== undefined) {
-    updates.avatar_url = window._pendingAvatarUrl;
-  }
-
-  const { error } = await authPatch('profiles', `id=eq.${currentUser.id}`, updates);
-  if (error) { toast('儲存失敗：' + error.message, 'error'); return; }
-
-  // Update local state
-  currentProfile = { ...currentProfile, ...updates };
-  window._pendingAvatarUrl = undefined;
-
-  toast('個人資料已更新 ✓', 'success');
-
-  // 同步更新右上角 avatar
-  updateUserUI();
-  // 更新右上角 avatar 顯示
-  const headerAvatar = document.querySelector('.user-area .avatar');
-  if (headerAvatar) {
-    if (currentProfile.avatar_url?.startsWith('http')) {
-      headerAvatar.innerHTML = `<img src="${currentProfile.avatar_url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
-      headerAvatar.style.background = 'none';
-    } else if (currentProfile.avatar_url?.startsWith('preset:')) {
-      const idx = parseInt(currentProfile.avatar_url.replace('preset:',''));
-      headerAvatar.style.background = AVATAR_PRESETS[idx]?.bg || AVATAR_PRESETS[0].bg;
-      headerAvatar.innerHTML = (currentProfile.name || '').slice(0,1);
-    } else {
-      headerAvatar.style.background = 'linear-gradient(135deg,var(--gold),#8b6914)';
-      headerAvatar.innerHTML = (currentProfile.name || '').slice(0,1);
-    }
-  }
-  renderProfile();
+let _aiNewLogoDataUrl = '';
+function previewAiLogo(input) {
+  if (!input.files[0]) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    _aiNewLogoDataUrl = e.target.result;
+    const p = document.getElementById('aiNewLogoPreview');
+    if (p) p.innerHTML = `<img src="${e.target.result}" style="width:32px;height:32px;object-fit:contain;border-radius:8px">`;
+    document.getElementById('aiNewLogoUrl').value = '';
+  };
+  reader.readAsDataURL(input.files[0]);
+}
+function previewAiLogoUrl(url) {
+  _aiNewLogoDataUrl = '';
+  const p = document.getElementById('aiNewLogoPreview'); if (!p) return;
+  p.innerHTML = url ? `<img src="${url}" style="width:32px;height:32px;object-fit:contain;border-radius:8px" onerror="this.parentElement.innerHTML='<i class=\\'fas fa-exclamation-triangle\\' style=\\'color:var(--red)\\'></i>'">` : '<i class="fas fa-image"></i>';
+}
+async function addAiLink() {
+  const name    = document.getElementById('aiNewName')?.value?.trim();
+  const url     = document.getElementById('aiNewUrl')?.value?.trim();
+  const logoUrl = document.getElementById('aiNewLogoUrl')?.value?.trim();
+  const logo    = _aiNewLogoDataUrl || logoUrl || '';
+  if (!name || !url) { toast('請填寫名稱和網址', 'error'); return; }
+  if (!url.startsWith('http')) { toast('網址請以 https:// 開頭', 'error'); return; }
+  const maxOrder = (_aiLinksCache||[]).reduce((m,l) => Math.max(m, l.sort_order||0), 0);
+  const { error } = await authPost('ai_links', { name, url, logo, sort_order: maxOrder+1 });
+  if (error) { toast('新增失敗：'+(error.message||''), 'error'); return; }
+  await renderAiLinks(); await renderAiMgrList();
+  ['aiNewName','aiNewUrl','aiNewLogoUrl'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
+  const p = document.getElementById('aiNewLogoPreview'); if(p) p.innerHTML='<i class="fas fa-image"></i>';
+  _aiNewLogoDataUrl = '';
+  toast(`已新增 ${name}`, 'success');
 }
 
 // =============================================
-// TOAST
-// =============================================
-function toast(msg, type = 'info') {
-  const c = document.getElementById('toastContainer');
-  const d = document.createElement('div');
-  d.className = `toast-item ${type}`;
-  const icon = { success: 'fa-check-circle', info: 'fa-circle-info', error: 'fa-triangle-exclamation' }[type];
-  d.innerHTML = `<i class="fas ${icon}" style="color:${type === 'success' ? '#27ae60' : type === 'error' ? '#e74c3c' : 'var(--gold)'}"></i>${msg}`;
-  c.appendChild(d);
-  setTimeout(() => { d.style.animation = 'slide-in .3s ease reverse'; setTimeout(() => d.remove(), 300); }, 2800);
-}
-
-// =============================================
-// TOOL SELECT — 自行輸入
-// =============================================
-function handleToolChange(val) {
-  const custom = document.getElementById('postToolCustom');
-  if (val === '其他（自行輸入）') {
-    custom.style.display = '';
-    custom.focus();
-  } else {
-    custom.style.display = 'none';
-    custom.value = '';
-  }
-}
-
-function getSelectedTool() {
-  const sel = document.getElementById('postTool').value;
-  if (sel === '其他（自行輸入）') {
-    const custom = document.getElementById('postToolCustom').value.trim();
-    return custom || '其他';
-  }
-  return sel;
-}
-
-// =============================================
-// HAMBURGER MENU
-// =============================================
-function toggleMobileMenu() {
-  const menu = document.getElementById('mobileMenu');
-  const btn  = document.getElementById('hamburger');
-  // 動態對齊 header 高度
-  const headerH = document.querySelector('header')?.offsetHeight || 72;
-  menu.style.top = headerH + 'px';
-  const open = menu.classList.toggle('open');
-  btn.classList.toggle('open', open);
-}
-function closeMobileMenu() {
-  document.getElementById('mobileMenu')?.classList.remove('open');
-  document.getElementById('hamburger')?.classList.remove('open');
-}
-// 關閉：點選單外部
-document.addEventListener('click', e => {
-  if (!e.target.closest('#mobileMenu') && !e.target.closest('#hamburger')) {
-    closeMobileMenu();
-  }
-});
-
-// =============================================
-// THEME TOGGLE
+// THEME
 // =============================================
 function toggleTheme() {
   const html = document.documentElement;
   const icon = document.getElementById('themeIcon');
   const isLight = html.getAttribute('data-theme') === 'light';
-  if (isLight) {
-    html.removeAttribute('data-theme');
-    icon.className = 'fas fa-moon';
-    localStorage.setItem('theme', 'dark');
-  } else {
-    html.setAttribute('data-theme', 'light');
-    icon.className = 'fas fa-sun';
-    localStorage.setItem('theme', 'light');
-  }
+  if (isLight) { html.removeAttribute('data-theme'); if(icon) icon.className='fas fa-moon'; localStorage.setItem('theme','dark'); }
+  else { html.setAttribute('data-theme','light'); if(icon) icon.className='fas fa-sun'; localStorage.setItem('theme','light'); }
 }
-
 function initTheme() {
   const saved = localStorage.getItem('theme');
   const preferLight = window.matchMedia('(prefers-color-scheme: light)').matches;
-  const useLight = saved === 'light' || (!saved && preferLight);
-  if (useLight) {
-    document.documentElement.setAttribute('data-theme', 'light');
-    const icon = document.getElementById('themeIcon');
-    if (icon) icon.className = 'fas fa-sun';
+  if (saved==='light' || (!saved && preferLight)) {
+    document.documentElement.setAttribute('data-theme','light');
+    const icon = document.getElementById('themeIcon'); if(icon) icon.className='fas fa-sun';
   }
+}
+
+// =============================================
+// TOAST
+// =============================================
+function toast(msg, type='info') {
+  const c = document.getElementById('toastContainer');
+  if (!c) return;
+  const d = document.createElement('div'); d.className = `toast-item ${type}`;
+  const icons = { success:'fa-check-circle', info:'fa-circle-info', error:'fa-triangle-exclamation' };
+  const colors = { success:'#27ae60', info:'var(--gold)', error:'#e74c3c' };
+  d.innerHTML = `<i class="fas ${icons[type]||icons.info}" style="color:${colors[type]||colors.info}"></i>${msg}`;
+  c.appendChild(d);
+  setTimeout(() => { d.style.animation='slide-in .3s ease reverse'; setTimeout(()=>d.remove(),300); }, 2800);
 }
 
 // =============================================
@@ -2320,14 +2021,12 @@ function initTheme() {
 // =============================================
 document.addEventListener('click', e => {
   if (!e.target.closest('.dropdown')) document.querySelectorAll('.dropdown').forEach(d => d.classList.remove('open'));
+  if (!e.target.closest('#mobileMenu') && !e.target.closest('#hamburger')) closeMobileMenu();
 });
 
-// 回到頂部：監聽滾動
 window.addEventListener('scroll', () => {
   const btn = document.getElementById('backToTop');
-  if (!btn) return;
-  if (window.scrollY > 300) btn.classList.add('visible');
-  else btn.classList.remove('visible');
+  if (btn) btn.classList.toggle('visible', window.scrollY > 300);
 }, { passive: true });
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -2336,6 +2035,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   loadPosts();
   renderAiLinks();
 });
+
 </script>
 </body>
 </html>
