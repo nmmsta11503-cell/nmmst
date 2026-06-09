@@ -633,7 +633,7 @@ h1,h2,h3{font-family:'Noto Serif TC',serif}
 
 <!-- 編輯文章 Modal -->
 <div class="overlay" id="editPostModal">
-  <div class="modal">
+  <div class="modal" style="max-width:760px">
     <div class="modal-header">
       <h2><i class="fas fa-pen" style="color:var(--gold);margin-right:8px"></i>編輯並重新提交</h2>
       <button class="modal-close" onclick="document.getElementById('editPostModal').classList.remove('show')"><i class="fas fa-xmark"></i></button>
@@ -643,15 +643,72 @@ h1,h2,h3{font-family:'Noto Serif TC',serif}
         <label class="form-label">標題 <span style="color:var(--red)">*</span></label>
         <input type="text" class="form-input" id="editPostTitle">
       </div>
+      <div style="display:flex;gap:10px">
+        <div class="form-group" style="flex:1">
+          <label class="form-label">AI 工具</label>
+          <select class="form-select" id="editPostTool" onchange="handleEditToolChange(this.value)">
+            <option>ChatGPT</option><option>Claude</option><option>Gemini</option>
+            <option>Midjourney</option><option>其他（自行輸入）</option>
+          </select>
+          <input type="text" class="form-input" id="editPostToolCustom" placeholder="輸入 AI 工具名稱…" style="display:none;margin-top:6px">
+        </div>
+        <div class="form-group" style="flex:1">
+          <label class="form-label">類別</label>
+          <select class="form-select" id="editPostCategory">
+            <option>文字生成</option><option>圖像生成</option><option>資料分析</option>
+            <option>創意寫作</option><option>教育</option><option>翻譯</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">標籤</label>
+        <div class="tags-input-area" id="editTagsArea" onclick="document.getElementById('editTagInput').focus()">
+          <input type="text" id="editTagInput" class="tags-input" placeholder="輸入後按 Enter 新增..." onkeydown="addEditTag(event)">
+        </div>
+      </div>
       <div class="form-group">
         <label class="form-label">提示詞 <span style="color:var(--red)">*</span></label>
-        <textarea class="form-textarea" id="editPostPrompt" rows="6" style="font-size:.88rem;line-height:1.8"></textarea>
+        <div class="rich-editor">
+          <div class="editor-toolbar">
+            <button class="toolbar-btn" onclick="fmtEdit('bold')"><i class="fas fa-bold"></i></button>
+            <button class="toolbar-btn" onclick="fmtEdit('italic')"><i class="fas fa-italic"></i></button>
+            <button class="toolbar-btn" onclick="fmtEdit('underline')"><i class="fas fa-underline"></i></button>
+            <div class="toolbar-sep"></div>
+            <button class="toolbar-btn" onclick="fmtEdit('insertUnorderedList')"><i class="fas fa-list-ul"></i></button>
+            <button class="toolbar-btn" onclick="fmtEdit('insertOrderedList')"><i class="fas fa-list-ol"></i></button>
+          </div>
+          <div class="editor-content" id="editPostPrompt" contenteditable="true" data-placeholder="輸入你的提示詞..."></div>
+        </div>
       </div>
       <div class="form-group">
         <label class="form-label">AI 生成結果（文字）</label>
-        <textarea class="form-textarea" id="editPostResult" rows="4" style="font-size:.88rem;line-height:1.8"></textarea>
+        <div class="rich-editor">
+          <div class="editor-toolbar">
+            <button class="toolbar-btn" onclick="fmtEditResult('bold')"><i class="fas fa-bold"></i></button>
+            <button class="toolbar-btn" onclick="fmtEditResult('italic')"><i class="fas fa-italic"></i></button>
+          </div>
+          <div class="editor-content" id="editPostResult" contenteditable="true" data-placeholder="貼上 AI 生成的文字結果..."></div>
+        </div>
       </div>
-      <div id="editSensitiveAlert" class="sensitive-alert">
+      <div class="form-group">
+        <label class="form-label">上傳圖片 <span style="font-size:.75rem;color:var(--text3)">（自動轉 WebP）</span></label>
+        <div class="upload-zone" ondragover="dragOver(event,this)" ondragleave="dragLeave(this)" ondrop="dropEditImg(event)" onclick="document.getElementById('editImgInput').click()">
+          <input type="file" id="editImgInput" accept="image/*" multiple style="display:none" onchange="handleEditImages(this.files)">
+          <i class="fas fa-image"></i>
+          <p>拖曳或點擊上傳圖片</p>
+        </div>
+        <div id="editImgList" class="uploaded-files"></div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">上傳附件</label>
+        <div class="upload-zone" ondragover="dragOver(event,this)" ondragleave="dragLeave(this)" ondrop="dropEditFile(event)" onclick="document.getElementById('editFileInput').click()">
+          <input type="file" id="editFileInput" multiple style="display:none" onchange="handleEditFiles(this.files)">
+          <i class="fas fa-file-arrow-up"></i>
+          <p>拖曳或點擊上傳檔案</p>
+        </div>
+        <div id="editFileList" class="uploaded-files"></div>
+      </div>
+      <div id="editSensitiveAlert" class="sensitive-alert" style="display:none">
         <i class="fas fa-triangle-exclamation"></i>
         <span id="editSensitiveMsg"></span>
       </div>
@@ -1813,35 +1870,134 @@ function doConfirm() {
 }
 
 let _editingPostId = null;
+let _editTags = [];
+let _editPendingImages = [];
+let _editPendingFiles = [];
+
+function handleEditToolChange(val) {
+  const c = document.getElementById('editPostToolCustom');
+  c.style.display = val === '其他（自行輸入）' ? '' : 'none';
+}
+function fmtEdit(cmd) { document.getElementById('editPostPrompt')?.focus(); document.execCommand(cmd,false,null); }
+function fmtEditResult(cmd) { document.getElementById('editPostResult')?.focus(); document.execCommand(cmd,false,null); }
+
+function addEditTag(e) {
+  if (e.key !== 'Enter' && e.key !== ',') return;
+  e.preventDefault();
+  const v = e.target.value.trim();
+  if (v && !_editTags.includes(v)) { _editTags.push(v); renderEditTags(); }
+  e.target.value = '';
+}
+function removeEditTag(t) { _editTags = _editTags.filter(x => x !== t); renderEditTags(); }
+function renderEditTags() {
+  const area = document.getElementById('editTagsArea');
+  if (!area) return;
+  area.querySelectorAll('.tag-chip').forEach(x => x.remove());
+  const inp = document.getElementById('editTagInput');
+  _editTags.forEach(t => {
+    const chip = document.createElement('span');
+    chip.className = 'tag-chip';
+    chip.innerHTML = `${t}<button onclick="removeEditTag('${t}')">×</button>`;
+    area.insertBefore(chip, inp);
+  });
+}
+
+function handleEditImages(files) {
+  const list = document.getElementById('editImgList');
+  Array.from(files).forEach(f => {
+    _editPendingImages.push(f);
+    const d = document.createElement('div'); d.className = 'uploaded-file';
+    d.innerHTML = `<i class="fas fa-image fi-icon"></i><span class="fi-name">${f.name.replace(/\.[^.]+$/,'.webp')}</span><span class="webp-tag">WebP</span><span class="fi-size">${(f.size/1024).toFixed(0)}KB</span>`;
+    list.appendChild(d);
+  });
+}
+function handleEditFiles(files) {
+  const list = document.getElementById('editFileList');
+  Array.from(files).forEach(f => {
+    _editPendingFiles.push(f);
+    const d = document.createElement('div'); d.className = 'uploaded-file';
+    d.innerHTML = `<i class="fas fa-file fi-icon"></i><span class="fi-name">${f.name}</span><span class="fi-size">${(f.size/1024).toFixed(0)}KB</span>`;
+    list.appendChild(d);
+  });
+}
+function dropEditImg(e) { e.preventDefault(); dragLeave(document.getElementById('editPostModal').querySelector('.upload-zone')); handleEditImages(e.dataTransfer.files); }
+function dropEditFile(e) { e.preventDefault(); handleEditFiles(e.dataTransfer.files); }
+
 async function resubmitPost(id) {
-  const { data: post } = await db.from('posts').select('title,prompt,result_text').eq('id', id).single();
+  const { data: post } = await db.from('posts').select('*').eq('id', id).single();
   if (!post) { toast('載入失敗', 'error'); return; }
   _editingPostId = id;
+  _editTags = (post.tags || []).filter(t => !['ChatGPT','Claude','Gemini','Midjourney','文字生成','圖像生成','資料分析','創意寫作','教育','翻譯'].includes(t));
+  _editPendingImages = [];
+  _editPendingFiles = [];
   document.getElementById('editPostTitle').value = post.title || '';
-  document.getElementById('editPostPrompt').value = post.prompt || '';
-  document.getElementById('editPostResult').value = post.result_text || '';
+  document.getElementById('editPostPrompt').innerHTML = (post.prompt || '').replace(/
+/g,'<br>');
+  document.getElementById('editPostResult').innerHTML = (post.result_text || '').replace(/
+/g,'<br>');
+  document.getElementById('editImgList').innerHTML = '';
+  document.getElementById('editFileList').innerHTML = '';
   document.getElementById('editSensitiveAlert').style.display = 'none';
+  renderEditTags();
+  // 設定 tool
+  const toolSel = document.getElementById('editPostTool');
+  const knownTools = ['ChatGPT','Claude','Gemini','Midjourney'];
+  const postTool = (post.tags||[]).find(t => knownTools.includes(t));
+  if (postTool) toolSel.value = postTool;
+  // 設定 category
+  const catSel = document.getElementById('editPostCategory');
+  const cats = ['文字生成','圖像生成','資料分析','創意寫作','教育','翻譯'];
+  const postCat = (post.tags||[]).find(t => cats.includes(t));
+  if (postCat) catSel.value = postCat;
   document.getElementById('editPostModal').classList.add('show');
 }
 
 async function saveAndResubmit() {
   const title = document.getElementById('editPostTitle').value.trim();
-  const prompt = document.getElementById('editPostPrompt').value.trim();
-  const result_text = document.getElementById('editPostResult').value.trim() || null;
+  const prompt = document.getElementById('editPostPrompt').innerText.trim();
+  const result_text = document.getElementById('editPostResult').innerText.trim() || null;
   if (!title || !prompt) { toast('標題和提示詞不能為空', 'error'); return; }
-  const flags = SENSITIVE_WORDS.filter(w => (title + prompt).includes(w));
+  const flags = SENSITIVE_WORDS.filter(w => (title+prompt).includes(w));
   if (flags.length) {
-    const alert = document.getElementById('editSensitiveAlert');
-    document.getElementById('editSensitiveMsg').textContent = '含有敏感詞：' + flags.join('、') + '，無法提交';
-    alert.style.display = 'flex';
+    document.getElementById('editSensitiveMsg').textContent = '含有敏感詞：' + flags.join('、');
+    document.getElementById('editSensitiveAlert').style.display = 'flex';
     return;
   }
+  const tool = document.getElementById('editPostTool').value === '其他（自行輸入）'
+    ? (document.getElementById('editPostToolCustom').value.trim() || '其他')
+    : document.getElementById('editPostTool').value;
+  const cat = document.getElementById('editPostCategory').value;
+  const allTags = [...new Set([tool, cat, ..._editTags].filter(Boolean))];
   const adb = await getAuthDb();
   const { error } = await adb.from('posts').update({
-    title, prompt, result_text,
+    title, prompt, result_text, tags: allTags,
     status: 'pending', sensitive_flags: []
   }).eq('id', _editingPostId);
   if (error) { toast('提交失敗：' + error.message, 'error'); return; }
+  // upload new images
+  for (const file of _editPendingImages) {
+    try {
+      const webpBlob = await convertToWebP(file);
+      const fname = file.name.replace(/\.[^.]+$/,'.webp');
+      const path = `${_editingPostId}/${Date.now()}_${fname}`;
+      const { data: up } = await adb.storage.from('attachments').upload(path, webpBlob, { contentType:'image/webp', upsert:true });
+      if (up) {
+        const { data: pub } = adb.storage.from('attachments').getPublicUrl(path);
+        await adb.from('attachments').insert({ post_id:_editingPostId, file_name:fname, file_url:pub.publicUrl, file_type:'image/webp', file_size:webpBlob.size, is_webp:true });
+      }
+    } catch(e) { console.warn(e); }
+  }
+  // upload new files
+  for (const file of _editPendingFiles) {
+    try {
+      const path = `${_editingPostId}/${Date.now()}_${file.name}`;
+      const { data: up } = await adb.storage.from('attachments').upload(path, file, { contentType:file.type, upsert:true });
+      if (up) {
+        const { data: pub } = adb.storage.from('attachments').getPublicUrl(path);
+        await adb.from('attachments').insert({ post_id:_editingPostId, file_name:file.name, file_url:pub.publicUrl, file_type:file.type, file_size:file.size, is_webp:false });
+      }
+    } catch(e) { console.warn(e); }
+  }
   document.getElementById('editPostModal').classList.remove('show');
   toast('已重新提交，等待審核 ✓', 'success');
   renderProfile();
