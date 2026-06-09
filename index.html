@@ -903,7 +903,7 @@ function sanitizeStoragePath(path) {
   return path.split('/').map((seg, i) => {
     if (i === 0) return seg; // post_id 不動
     return seg
-      .replace(/[^ -]/g, c => encodeURIComponent(c).replace(/%/g,'_'))
+      .replace(/[\u0080-\uFFFF]/g, c => encodeURIComponent(c).replace(/%/g,'_'))
       .replace(/[^a-zA-Z0-9._\-]/g, '_')
       .replace(/_+/g, '_');
   }).join('/');
@@ -1699,7 +1699,7 @@ async function submitPost() {
     try {
       const blob = await convertToWebP(file);
       const rawFname = file.name.replace(/\.[^.]+$/, '.webp');
-      const fname = rawFname.replace(/[^\x00-\x7F]/g, c => encodeURIComponent(c).replace(/%/g,'_')).replace(/[^a-zA-Z0-9._\-]/g,'_');
+      const fname = rawFname.replace(/[\u0080-\uFFFF]/g, c => encodeURIComponent(c).replace(/%/g,'_')).replace(/[^a-zA-Z0-9._-]/g,'_');
       const path  = `${post.id}/${Date.now()}_${fname}`;
       const { data: up } = await authStorageUpload(path, blob, 'image/webp');
       if (up) {
@@ -1711,7 +1711,7 @@ async function submitPost() {
   }
   for (const file of pendingFiles) {
     try {
-      const safeName = file.name.replace(/[^\x00-\x7F]/g, c => encodeURIComponent(c).replace(/%/g,'_')).replace(/[^a-zA-Z0-9._\-]/g,'_');
+      const safeName = file.name.replace(/[\u0080-\uFFFF]/g, c => encodeURIComponent(c).replace(/%/g,'_')).replace(/[^a-zA-Z0-9._-]/g,'_');
       const path = `${post.id}/${Date.now()}_${safeName}`;
       const { data: up } = await authStorageUpload(path, file, file.type);
       if (up) {
@@ -2011,7 +2011,7 @@ async function saveAndResubmit() {
     try {
       const blob = await convertToWebP(file);
       const rawFname = file.name.replace(/\.[^.]+$/,'.webp');
-      const fname = rawFname.replace(/[^\x00-\x7F]/g, c => encodeURIComponent(c).replace(/%/g,'_')).replace(/[^a-zA-Z0-9._\-]/g,'_');
+      const fname = rawFname.replace(/[\u0080-\uFFFF]/g, c => encodeURIComponent(c).replace(/%/g,'_')).replace(/[^a-zA-Z0-9._-]/g,'_');
       const path = `${_editingPostId}/${Date.now()}_${fname}`;
       const { data: up } = await authStorageUpload(path, blob, 'image/webp');
       if (up) await db.from('attachments').insert({ post_id:_editingPostId, file_name:fname, file_url:up.publicUrl, file_type:'image/webp', file_size:blob.size, is_webp:true });
@@ -2019,7 +2019,7 @@ async function saveAndResubmit() {
   }
   for (const file of _editPendingFiles) {
     try {
-      const eSafeName = file.name.replace(/[^\x00-\x7F]/g, c => encodeURIComponent(c).replace(/%/g,'_')).replace(/[^a-zA-Z0-9._\-]/g,'_');
+      const eSafeName = file.name.replace(/[\u0080-\uFFFF]/g, c => encodeURIComponent(c).replace(/%/g,'_')).replace(/[^a-zA-Z0-9._-]/g,'_');
       const path = `${_editingPostId}/${Date.now()}_${eSafeName}`;
       const { data: up } = await authStorageUpload(path, file, file.type);
       if (up) await db.from('attachments').insert({ post_id:_editingPostId, file_name:file.name, file_url:up.publicUrl, file_type:file.type, file_size:file.size, is_webp:false });
