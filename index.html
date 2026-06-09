@@ -1105,19 +1105,27 @@ async function initAuth() {
 
 async function onLogin(user) {
   currentUser = user;
-  updateUserUI(); // 立即更新 UI，不等 profile 載入
-  nav('home');    // 立即顯示頁面
-  const { data: profile } = await db.from('profiles').select('*').eq('id', user.id).single().catch(() => ({ data: null }));
-  currentProfile = profile;
+  // 先載入 profile，再更新 UI（避免 updateUserUI 因 currentProfile=null 顯示登入按鈕）
   try {
-    const [{ data: likes }, { data: bkms }] = await Promise.all([
-      db.from('likes').select('post_id').eq('user_id', user.id),
-      db.from('bookmarks').select('post_id').eq('user_id', user.id),
-    ]);
-    likedPostIds = new Set((likes || []).map(l => l.post_id));
-    bookmarkedPostIds = new Set((bkms || []).map(b => b.post_id));
-  } catch(e) { console.warn('likes/bookmarks fetch failed:', e.message); }
-  updateUserUI(); // 再次更新（帶 profile 資料）
+    const { data: profile } = await db.from('profiles').select('*').eq('id', user.id).single();
+    currentProfile = profile;
+  } catch(e) {
+    console.warn('profile fetch failed:', e.message);
+    // 建立最小 profile
+    currentProfile = { id: user.id, name: user.email.split('@')[0], role: 'user' };
+  }
+  // 同時載入 likes / bookmarks（不阻擋 UI）
+  Promise.all([
+    db.from('likes').select('post_id').eq('user_id', user.id).then(r => {
+      likedPostIds = new Set((r.data || []).map(l => l.post_id));
+    }),
+    db.from('bookmarks').select('post_id').eq('user_id', user.id).then(r => {
+      bookmarkedPostIds = new Set((r.data || []).map(b => b.post_id));
+    }),
+  ]).catch(e => console.warn('likes/bookmarks:', e.message));
+  // profile 載入完再更新 UI 和導航
+  updateUserUI();
+  nav('home');
   renderAiLinks().catch(()=>{});
 }
 
@@ -1252,12 +1260,10 @@ function renderCards() {
     <div class="card" onclick="openPost('${p.id}')">
       ${p.view_count > 300 ? '<div class="hot-badge">🔥 HOT</div>' : daysAgo < 7 ? '<div class="new-badge">✨ NEW</div>' : ''}
       <div class="card-tags">
-        ${p.tool ? `<span class="tag ai">${p.tool}</span>` : ''}
-
-        ${(p.tags || []).slice(0, 2).map(t => `<span class="tag">${t}</span>`).join('')}
+        ${(p.tags || []).slice(0, 3).map(t => `<span class="tag">${t}</span>`).join('')}
       </div>
       <div class="card-title">${p.title}</div>
-      ${(() => { const img = (p.attachments||[]).find(a => a.is_webp || a.file_type?.startsWith('image')); return img ? `<img src="${img.file_url}" style="width:100%;border-radius:var(--radius);margin-bottom:8px;max-height:180px;object-fit:cover" loading="lazy">` : ''; })()}
+
       <div class="card-excerpt">${(p.prompt || '').slice(0, 80)}${(p.prompt || '').length > 80 ? '…' : ''}</div>
       <div class="pop-bar-wrap">
         <i class="fas fa-fire" style="font-size:10px;color:var(--gold)"></i>
@@ -1284,14 +1290,17 @@ function renderCards() {
 }
 
 async function openPost(id) {
+  try {
   // increment view
   const post = allPosts.find(p => p.id === id) || {};
-  authPatch('posts', `id=eq.${id}`, { view_count: (post.view_count || 0) + 1 });
+  authPatch('posts', `id=eq.${id}`, { view_count: (post.view_count || 0) + 1 }).catch(()=>{});
   if (post.view_count !== undefined) post.view_count++;
 
-  // fetch full post
-  const { data: p } = await db.from('posts').select('*, profiles(name), attachments(*)').eq('id', id).single();
-  if (!p) return;
+  // fetch full post with attachments
+  const { data: p, error: pErr } = await db.from('posts')
+    .select('*, profiles(name, avatar_url), attachments(*)')
+    .eq('id', id).single();
+  if (pErr || !p) { toast('文章載入失敗', 'error'); return; }
   const { data: comments } = await db.from('comments').select('*, profiles(name, avatar_url, role)').eq('post_id', id).order('created_at');
 
   const name = p.profiles?.name || '館員';
@@ -1365,6 +1374,7 @@ async function openPost(id) {
     <div class="stat-item"><i class="fas fa-comment"></i>${p.comment_count || 0} 留言</div>`;
 
   document.getElementById('cardModal').classList.add('show');
+  } catch(e) { console.error('openPost error:', e); toast('文章載入失敗：' + e.message, 'error'); }
 }
 
 function closeModal() { document.getElementById('cardModal').classList.remove('show'); }
