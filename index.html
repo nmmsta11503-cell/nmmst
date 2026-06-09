@@ -75,9 +75,9 @@ h1,h2,h3{font-family:'Noto Serif TC',serif}
 .app{display:flex;flex-direction:column;min-height:100vh}
 
 /* HEADER */
-.header{background:var(--bg2);border-bottom:1px solid var(--border);padding:0 1rem;display:flex;align-items:center;gap:1rem;height:64px;position:sticky;top:0;z-index:100;overflow:hidden}
+.header{background:var(--bg2);border-bottom:1px solid var(--border);padding:0 1.25rem;display:flex;align-items:center;gap:1.25rem;height:72px;position:sticky;top:0;z-index:100;overflow:hidden}
 .logo{display:flex;align-items:center;gap:8px;cursor:pointer;text-decoration:none;flex-shrink:0;min-width:0}
-.logo-img{height:44px;width:auto;object-fit:contain;display:block;flex-shrink:0;max-width:140px}
+.logo-img{height:52px;width:auto;object-fit:contain;display:block;flex-shrink:0;max-width:180px}
 .logo-divider{width:1px;height:22px;background:var(--border2);flex-shrink:0}
 .logo-text-wrap{display:flex;flex-direction:column;justify-content:center;min-width:0}
 .logo-text{font-family:'Noto Serif TC',serif;font-size:.85rem;font-weight:700;color:var(--gold2);letter-spacing:.5px;white-space:nowrap;line-height:1.3}
@@ -282,6 +282,14 @@ h1,h2,h3{font-family:'Noto Serif TC',serif}
 .tags-input{background:none;border:none;outline:none;color:var(--text);font-size:13px;min-width:60px;font-family:'Noto Sans TC',sans-serif}
 
 /* SENSITIVE WARNING */
+/* 確認對話框 */
+.confirm-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:500;align-items:center;justify-content:center}
+.confirm-overlay.show{display:flex}
+.confirm-box{background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius2);padding:1.75rem;max-width:360px;width:90%;text-align:center;box-shadow:0 16px 48px rgba(0,0,0,.5)}
+.confirm-box h3{font-size:1.05rem;margin-bottom:.6rem;color:var(--text)}
+.confirm-box p{font-size:.85rem;color:var(--text2);line-height:1.7;margin-bottom:1.25rem}
+.confirm-btns{display:flex;gap:10px;justify-content:center}
+
 .sensitive-alert{background:rgba(231,76,60,.08);border:1px solid rgba(231,76,60,.3);border-radius:var(--radius);padding:10px 14px;display:none;align-items:center;gap:10px;margin-top:.6rem;font-size:.82rem;color:#e74c3c}
 .sensitive-alert.show{display:flex}
 
@@ -330,7 +338,7 @@ h1,h2,h3{font-family:'Noto Serif TC',serif}
 
 /* PROFILE DROPDOWN */
 .dropdown{position:static}
-.dropdown-menu{display:none;position:fixed;top:68px;right:.75rem;margin-top:0;background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius2);padding:.4rem;min-width:180px;z-index:300;box-shadow:0 8px 24px rgba(0,0,0,.4)}
+.dropdown-menu{display:none;position:fixed;top:76px;right:.75rem;margin-top:0;background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius2);padding:.4rem;min-width:180px;z-index:300;box-shadow:0 8px 24px rgba(0,0,0,.4)}
 .dropdown.open .dropdown-menu{display:block}
 .dropdown-item{display:flex;align-items:center;gap:8px;padding:7px 12px;border-radius:6px;font-size:13px;color:var(--text2);cursor:pointer;transition:all .2s;background:none;border:none;width:100%;text-align:left;font-family:'Noto Sans TC',sans-serif}
 .dropdown-item:hover{background:var(--bg3);color:var(--text)}
@@ -398,7 +406,7 @@ h1,h2,h3{font-family:'Noto Serif TC',serif}
 <header class="header">
   <div class="logo" onclick="nav('home')">
     <img class="logo-img" src="img/logo.png" alt="NMMST" onerror="this.style.display='none';document.getElementById('logo-fallback').style.display='flex'">
-    <div id="logo-fallback" style="display:none;width:44px;height:44px;background:linear-gradient(135deg,var(--gold),var(--gold2));border-radius:8px;align-items:center;justify-content:center;font-size:18px;color:#0f0e0d;flex-shrink:0"><i class="fas fa-landmark"></i></div>
+    <div id="logo-fallback" style="display:none;width:52px;height:52px;background:linear-gradient(135deg,var(--gold),var(--gold2));border-radius:8px;align-items:center;justify-content:center;font-size:18px;color:#0f0e0d;flex-shrink:0"><i class="fas fa-landmark"></i></div>
     <div class="logo-divider"></div>
     <div class="logo-text-wrap">
       <div class="logo-text">提示詞共學平台</div>
@@ -568,7 +576,7 @@ h1,h2,h3{font-family:'Noto Serif TC',serif}
       </div>
       <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:.5rem">
         <button class="btn btn-outline" onclick="saveDraft()"><i class="fas fa-floppy-disk"></i>儲存草稿</button>
-        <button class="btn btn-primary" onclick="submitPost()" id="submitBtn"><i class="fas fa-paper-plane"></i>送審</button>
+        <button class="btn btn-primary" onclick="confirmSubmit()" id="submitBtn"><i class="fas fa-paper-plane"></i>送審</button>
       </div>
       <div class="submit-status" id="submitStatus" style="display:none">
         <div class="submit-icon">📮</div>
@@ -621,6 +629,51 @@ h1,h2,h3{font-family:'Noto Serif TC',serif}
   </div>
 
 </main>
+</div>
+
+<!-- 編輯文章 Modal -->
+<div class="overlay" id="editPostModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2><i class="fas fa-pen" style="color:var(--gold);margin-right:8px"></i>編輯並重新提交</h2>
+      <button class="modal-close" onclick="document.getElementById('editPostModal').classList.remove('show')"><i class="fas fa-xmark"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">標題 <span style="color:var(--red)">*</span></label>
+        <input type="text" class="form-input" id="editPostTitle">
+      </div>
+      <div class="form-group">
+        <label class="form-label">提示詞 <span style="color:var(--red)">*</span></label>
+        <textarea class="form-textarea" id="editPostPrompt" rows="6" style="font-size:.88rem;line-height:1.8"></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">AI 生成結果（文字）</label>
+        <textarea class="form-textarea" id="editPostResult" rows="4" style="font-size:.88rem;line-height:1.8"></textarea>
+      </div>
+      <div id="editSensitiveAlert" class="sensitive-alert">
+        <i class="fas fa-triangle-exclamation"></i>
+        <span id="editSensitiveMsg"></span>
+      </div>
+    </div>
+    <div class="modal-footer" style="justify-content:flex-end;gap:10px">
+      <button class="btn btn-outline" onclick="document.getElementById('editPostModal').classList.remove('show')">取消</button>
+      <button class="btn btn-primary" onclick="saveAndResubmit()"><i class="fas fa-paper-plane"></i>儲存並重新提交</button>
+    </div>
+  </div>
+</div>
+
+<!-- 確認對話框 -->
+<div class="confirm-overlay" id="confirmOverlay">
+  <div class="confirm-box">
+    <div id="confirmIcon" style="font-size:2rem;margin-bottom:.75rem">❓</div>
+    <h3 id="confirmTitle"></h3>
+    <p id="confirmMsg"></p>
+    <div class="confirm-btns">
+      <button class="btn btn-outline" onclick="closeConfirm()">取消</button>
+      <button class="btn" id="confirmOkBtn" onclick="doConfirm()">確認</button>
+    </div>
+  </div>
 </div>
 
 <!-- AI LINKS MANAGE MODAL -->
@@ -773,8 +826,15 @@ function renderAiMgrList() {
   const el = document.getElementById('aiMgrList');
   if (!el) return;
   if (!links.length) { el.innerHTML = '<div style="font-size:.82rem;color:var(--text3);padding:.5rem 0">尚無連結</div>'; return; }
-  el.innerHTML = links.map((l, i) => `
-    <div class="ai-mgr-row">
+  el.innerHTML = `<div style="font-size:.78rem;color:var(--text3);margin-bottom:6px"><i class="fas fa-grip-vertical" style="margin-right:4px"></i>拖曳左側圖示可調整順序</div>` +
+    links.map((l, i) => `
+    <div class="ai-mgr-row" draggable="true"
+      ondragstart="aiDragStart(event,${i})"
+      ondragover="aiDragOver(event)"
+      ondrop="aiDrop(event,${i})"
+      ondragend="aiDragEnd()"
+      id="aiRow${i}" style="cursor:default">
+      <i class="fas fa-grip-vertical" style="color:var(--text3);cursor:grab;font-size:13px;flex-shrink:0"></i>
       ${l.logo
         ? `<img class="ai-mgr-logo" src="${l.logo}" alt="${l.name}" onerror="this.style.display='none'">`
         : `<div class="ai-mgr-logo-placeholder">${l.name.slice(0,1)}</div>`
@@ -787,6 +847,29 @@ function renderAiMgrList() {
         <i class="fas fa-trash"></i>
       </button>
     </div>`).join('');
+}
+
+let _aiDragFrom = null;
+function aiDragStart(e, i) {
+  _aiDragFrom = i;
+  e.dataTransfer.effectAllowed = 'move';
+  e.currentTarget.style.opacity = '.4';
+}
+function aiDragOver(e) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; }
+function aiDrop(e, i) {
+  e.preventDefault();
+  if (_aiDragFrom === null || _aiDragFrom === i) return;
+  const links = loadAiLinks();
+  const moved = links.splice(_aiDragFrom, 1)[0];
+  links.splice(i, 0, moved);
+  saveAiLinks(links);
+  renderAiLinks();
+  renderAiMgrList();
+  _aiDragFrom = null;
+}
+function aiDragEnd() {
+  document.querySelectorAll('.ai-mgr-row').forEach(r => r.style.opacity = '1');
+  _aiDragFrom = null;
 }
 
 let _aiNewLogoDataUrl = '';
@@ -1327,6 +1410,18 @@ async function loadAdminPosts() {
 }
 
 async function setPostStatus(id, status) {
+  const { data: post } = await db.from('posts').select('title').eq('id', id).single();
+  const title = post?.title || '此文章';
+  if (status === 'approved') {
+    showConfirm('✅','確認核准上架？',`「${title}」將公開顯示給所有使用者。`,'核准上架','btn-success', () => _doSetStatus(id, status));
+  } else if (status === 'rejected') {
+    showConfirm('🚫','確認拒絕刊登？',`「${title}」將被拒絕，作者可修改後重新提交。`,'確認拒絕','btn-danger', () => _doSetStatus(id, status));
+  } else {
+    _doSetStatus(id, status);
+  }
+}
+
+async function _doSetStatus(id, status) {
   const adb8 = await getAuthDb();
   const { error } = await adb8.from('posts').update({ status }).eq('id', id);
   if (error) { toast('操作失敗', 'error'); return; }
@@ -1430,6 +1525,13 @@ function dragLeave(el) { el.classList.remove('drag'); }
 function dropImg(e) { e.preventDefault(); document.getElementById('imgZone').classList.remove('drag'); handleImages(e.dataTransfer.files); }
 function dropFile(e) { e.preventDefault(); document.getElementById('fileZone').classList.remove('drag'); handleFilesUpload(e.dataTransfer.files); }
 
+function confirmSubmit() {
+  const title = document.getElementById('postTitle')?.value?.trim();
+  const prompt = document.getElementById('promptEditor')?.innerText?.trim();
+  if (!title || !prompt) { submitPost(); return; } // 讓 submitPost 自己處理驗證錯誤
+  showConfirm('📤','確認送出審核？',`「${title}」將送交管理員審核，通過後才會上架。`,'確認送出','btn-primary', submitPost);
+}
+
 async function submitPost() {
   if (!currentUser) { toast('請先登入', 'info'); return; }
   const title = document.getElementById('postTitle').value.trim();
@@ -1467,10 +1569,12 @@ async function submitPost() {
       const webpBlob = await convertToWebP(file);
       const fname = file.name.replace(/\.[^.]+$/, '.webp');
       const path = `${post.id}/${Date.now()}_${fname}`;
-      const { data: up } = await db.storage.from('attachments').upload(path, webpBlob, { contentType: 'image/webp', upsert: true });
+      const _adbImg = await getAuthDb();
+      const { data: up, error: upErr } = await _adbImg.storage.from('attachments').upload(path, webpBlob, { contentType: 'image/webp', upsert: true });
+      if (upErr) { console.warn('img upload err', upErr.message); }
       if (up) {
-        const { data: pub } = db.storage.from('attachments').getPublicUrl(path);
-        await db.from('attachments').insert({ post_id: post.id, file_name: fname, file_url: pub.publicUrl, file_type: 'image/webp', file_size: webpBlob.size, is_webp: true });
+        const { data: pub } = _adbImg.storage.from('attachments').getPublicUrl(path);
+        await _adbImg.from('attachments').insert({ post_id: post.id, file_name: fname, file_url: pub.publicUrl, file_type: 'image/webp', file_size: webpBlob.size, is_webp: true });
       }
     } catch (e) { console.warn('image upload failed', e); }
   }
@@ -1478,10 +1582,12 @@ async function submitPost() {
   for (const file of pendingFiles) {
     try {
       const path = `${post.id}/${Date.now()}_${file.name}`;
-      const { data: up } = await db.storage.from('attachments').upload(path, file, { contentType: file.type, upsert: true });
+      const _adbFile = await getAuthDb();
+      const { data: up, error: upErr2 } = await _adbFile.storage.from('attachments').upload(path, file, { contentType: file.type, upsert: true });
+      if (upErr2) { console.warn('file upload err', upErr2.message); }
       if (up) {
-        const { data: pub } = db.storage.from('attachments').getPublicUrl(path);
-        await db.from('attachments').insert({ post_id: post.id, file_name: file.name, file_url: pub.publicUrl, file_type: file.type, file_size: file.size, is_webp: false });
+        const { data: pub } = _adbFile.storage.from('attachments').getPublicUrl(path);
+        await _adbFile.from('attachments').insert({ post_id: post.id, file_name: file.name, file_url: pub.publicUrl, file_type: file.type, file_size: file.size, is_webp: false });
       }
     } catch (e) { console.warn('file upload failed', e); }
   }
@@ -1685,10 +1791,58 @@ async function renderProfile() {
         </div>`).join('')}</div>`}`;
 }
 
+// ── 確認對話框 ──
+let _confirmCallback = null;
+function showConfirm(icon, title, msg, btnLabel, btnClass, cb) {
+  document.getElementById('confirmIcon').textContent = icon;
+  document.getElementById('confirmTitle').textContent = title;
+  document.getElementById('confirmMsg').textContent = msg;
+  const btn = document.getElementById('confirmOkBtn');
+  btn.textContent = btnLabel;
+  btn.className = 'btn ' + btnClass;
+  _confirmCallback = cb;
+  document.getElementById('confirmOverlay').classList.add('show');
+}
+function closeConfirm() {
+  document.getElementById('confirmOverlay').classList.remove('show');
+  _confirmCallback = null;
+}
+function doConfirm() {
+  closeConfirm();
+  if (_confirmCallback) _confirmCallback();
+}
+
+let _editingPostId = null;
 async function resubmitPost(id) {
+  const { data: post } = await db.from('posts').select('title,prompt,result_text').eq('id', id).single();
+  if (!post) { toast('載入失敗', 'error'); return; }
+  _editingPostId = id;
+  document.getElementById('editPostTitle').value = post.title || '';
+  document.getElementById('editPostPrompt').value = post.prompt || '';
+  document.getElementById('editPostResult').value = post.result_text || '';
+  document.getElementById('editSensitiveAlert').style.display = 'none';
+  document.getElementById('editPostModal').classList.add('show');
+}
+
+async function saveAndResubmit() {
+  const title = document.getElementById('editPostTitle').value.trim();
+  const prompt = document.getElementById('editPostPrompt').value.trim();
+  const result_text = document.getElementById('editPostResult').value.trim() || null;
+  if (!title || !prompt) { toast('標題和提示詞不能為空', 'error'); return; }
+  const flags = SENSITIVE_WORDS.filter(w => (title + prompt).includes(w));
+  if (flags.length) {
+    const alert = document.getElementById('editSensitiveAlert');
+    document.getElementById('editSensitiveMsg').textContent = '含有敏感詞：' + flags.join('、') + '，無法提交';
+    alert.style.display = 'flex';
+    return;
+  }
   const adb = await getAuthDb();
-  const { error } = await adb.from('posts').update({ status: 'pending', sensitive_flags: [] }).eq('id', id);
-  if (error) { toast('操作失敗：' + error.message, 'error'); return; }
+  const { error } = await adb.from('posts').update({
+    title, prompt, result_text,
+    status: 'pending', sensitive_flags: []
+  }).eq('id', _editingPostId);
+  if (error) { toast('提交失敗：' + error.message, 'error'); return; }
+  document.getElementById('editPostModal').classList.remove('show');
   toast('已重新提交，等待審核 ✓', 'success');
   renderProfile();
 }
