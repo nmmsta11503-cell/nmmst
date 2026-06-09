@@ -205,9 +205,8 @@ h1,h2,h3{font-family:'Noto Serif TC',serif}
 .sort-btn:hover,.sort-btn.active{border-color:var(--gold);color:var(--gold)}
 
 /* CARDS GRID */
-.cards-grid{columns:3;gap:16px;column-fill:balance}
-@media(max-width:900px){.cards-grid{columns:2}}
-@media(max-width:600px){.cards-grid{columns:1}}
+.cards-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;align-items:start}
+@media(max-width:600px){.cards-grid{grid-template-columns:1fr}}
 .card{break-inside:avoid;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius2);padding:1.2rem;margin-bottom:16px;cursor:pointer;transition:all .25s;position:relative}
 .card:hover{border-color:var(--gold);transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.4)}
 .card-img{width:100%;border-radius:var(--radius);margin-bottom:10px;object-fit:cover;max-height:200px}
@@ -538,7 +537,8 @@ h1,h2,h3{font-family:'Noto Serif TC',serif}
                 <option>ChatGPT</option>
                 <option>Claude</option>
                 <option>Gemini</option>
-                <option>Midjourney</option>
+                <option>Meta AI</option>
+                <option>Grok</option>
                 <option>其他（自行輸入）</option>
               </select>
               <input type="text" class="form-input" id="postToolCustom" placeholder="輸入 AI 工具名稱…" style="display:none;margin-top:6px">
@@ -694,7 +694,7 @@ h1,h2,h3{font-family:'Noto Serif TC',serif}
           <label class="form-label">AI 工具</label>
           <select class="form-select" id="editPostTool" onchange="handleEditToolChange(this.value)">
             <option>ChatGPT</option><option>Claude</option><option>Gemini</option>
-            <option>Midjourney</option><option>其他（自行輸入）</option>
+            <option>Meta AI</option><option>Grok</option><option>其他（自行輸入）</option>
           </select>
           <input type="text" class="form-input" id="editPostToolCustom" placeholder="輸入 AI 工具名稱…" style="display:none;margin-top:6px">
         </div>
@@ -1938,7 +1938,7 @@ async function resubmitPost(id) {
   document.getElementById('editImgList').innerHTML = '';
   document.getElementById('editFileList').innerHTML = '';
   document.getElementById('editSensitiveAlert').style.display = 'none';
-  const knownTools = ['ChatGPT','Claude','Gemini','Midjourney'];
+  const knownTools = ['ChatGPT','Claude','Gemini','Meta AI','Grok'];
   const postTool = (post.tags||[]).find(t => knownTools.includes(t));
   const toolSel = document.getElementById('editPostTool');
   if (toolSel && postTool) toolSel.value = postTool;
