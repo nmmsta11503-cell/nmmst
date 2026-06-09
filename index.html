@@ -615,7 +615,7 @@ h1,h2,h3{font-family:'Noto Serif TC',serif}
       </div>
       <div class="form-group">
         <label class="form-label">電子郵件</label>
-        <input type="email" class="form-input" id="loginEmail" placeholder="yourname@mail.nmmst.gov.tw" autocomplete="email">
+        <input type="email" class="form-input" id="loginEmail" placeholder="yourname@nmmst.gov.tw" autocomplete="email">
       </div>
       <div class="form-group">
         <label class="form-label">密碼</label>
@@ -1931,10 +1931,8 @@ async function resubmitPost(id) {
   _editPendingImages = [];
   _editPendingFiles = [];
   document.getElementById('editPostTitle').value = post.title || '';
-  document.getElementById('editPostPrompt').innerHTML = (post.prompt || '').replace(/
-/g,'<br>');
-  document.getElementById('editPostResult').innerHTML = (post.result_text || '').replace(/
-/g,'<br>');
+  document.getElementById('editPostPrompt').innerHTML = (post.prompt || '').split('\n').join('<br>');
+  document.getElementById('editPostResult').innerHTML = (post.result_text || '').split('\n').join('<br>');
   document.getElementById('editImgList').innerHTML = '';
   document.getElementById('editFileList').innerHTML = '';
   document.getElementById('editSensitiveAlert').style.display = 'none';
