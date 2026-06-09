@@ -1414,16 +1414,11 @@ async function setPostStatus(id, status) {
   const labels = { approved: ['✅','確認核准上架？',`「${title}」將公開顯示。`,'核准上架','btn-success'], rejected: ['🚫','確認拒絕？',`「${title}」將被拒絕。`,'確認拒絕','btn-danger'] };
   const l = labels[status];
   const doUpdate = async () => {
-    // 驗證 session 存在
-    const { data: { session } } = await db.auth.getSession();
-    console.log('session for update:', session ? 'exists, token: ' + session.access_token.slice(0,20) + '...' : 'NULL');
-    if (!session) { toast('Session 已過期，請重新登入', 'error'); return; }
-    
+    console.log('doUpdate called, status:', status, 'id:', id);
     const { error } = await db.from('posts').update({ status }).eq('id', id);
-    console.log('update result - error:', error);
+    console.log('update done, error:', error);
     if (error) {
-      console.error('setPostStatus error:', JSON.stringify(error));
-      toast('操作失敗：' + (error.message || error.code || JSON.stringify(error)), 'error');
+      toast('操作失敗：' + (error.message || JSON.stringify(error)), 'error');
       return;
     }
     toast(status==='approved' ? '✅ 已核准上架' : '🚫 已拒絕', status==='approved'?'success':'info');
@@ -1454,7 +1449,19 @@ function showConfirm(icon, title, msg, btnLabel, btnClass, cb) {
   document.getElementById('confirmOverlay').classList.add('show');
 }
 function closeConfirm() { document.getElementById('confirmOverlay').classList.remove('show'); _confirmCb = null; }
-function doConfirm() { closeConfirm(); if (_confirmCb) _confirmCb(); }
+function doConfirm() {
+  closeConfirm();
+  if (!_confirmCb) { console.error('doConfirm: no callback'); return; }
+  try {
+    const result = _confirmCb();
+    if (result && typeof result.catch === 'function') {
+      result.catch(e => { console.error('doConfirm callback error:', e); toast('執行失敗：' + e.message, 'error'); });
+    }
+  } catch(e) {
+    console.error('doConfirm sync error:', e);
+    toast('執行失敗：' + e.message, 'error');
+  }
+}
 
 // =============================================
 // UPLOAD / SUBMIT
