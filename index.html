@@ -876,15 +876,16 @@ async function authDelete(table, filter) {
   return { error: null };
 }
 async function authStorageUpload(path, blob, contentType) {
-  const token = await getToken();
-  if (!token) return { data: null, error: { message: '未登入' } };
-  const res = await fetch(`${SUPABASE_URL}/storage/v1/object/attachments/${path}`, {
-    method: 'POST',
-    headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${token}`, 'Content-Type': contentType, 'x-upsert': 'true' },
-    body: blob
-  });
-  if (!res.ok) { const e = await res.text(); return { data: null, error: { message: e } }; }
-  return { data: { publicUrl: `${SUPABASE_URL}/storage/v1/object/public/attachments/${path}` }, error: null };
+  try {
+    const { data, error } = await db.storage.from('attachments').upload(path, blob, {
+      contentType, upsert: true
+    });
+    if (error) return { data: null, error };
+    const { data: pub } = db.storage.from('attachments').getPublicUrl(path);
+    return { data: { publicUrl: pub.publicUrl }, error: null };
+  } catch(e) {
+    return { data: null, error: { message: e.message } };
+  }
 }
 
 // =============================================
@@ -1165,16 +1166,20 @@ async function openPost(id) {
   // increment view in background
   const post = allPosts.find(p => p.id === id);
   if (post) { post.view_count = (post.view_count || 0) + 1; }
-  authPatch('posts', `id=eq.${id}`, { view_count: (post?.view_count || 1) }).catch(() => {});
+  db.from('posts').update({ view_count: (post?.view_count || 1) }).eq('id', id).then(()=>{}).catch(()=>{});
 
   try {
     const [postRes, commentRes] = await Promise.all([
-      db.from('posts').select('*, profiles(name, avatar_url), attachments(*)').eq('id', id).single(),
+      db.from('posts').select('*, profiles(name, avatar_url)').eq('id', id).single(),
       db.from('comments').select('*, profiles(name, avatar_url)').eq('post_id', id).order('created_at')
     ]);
     if (postRes.error) throw postRes.error;
     const p = postRes.data;
     const comments = commentRes.data || [];
+    // 分開查詢 attachments（避免 FK join 失敗時整個查詢掛掉）
+    const { data: attData } = await db.from('attachments').select('*').eq('post_id', id);
+    p.attachments = attData || [];
+    console.log('attachments:', p.attachments);
     const liked = likedPostIds.has(p.id);
     const bkmd  = bookmarkedPostIds.has(p.id);
     const name  = p.profiles?.name || '館員';
@@ -1252,11 +1257,11 @@ async function toggleLike(id, fromModal = false) {
   const liked = likedPostIds.has(id);
   const post  = allPosts.find(p => p.id === id);
   if (liked) {
-    await authDelete('likes', `post_id=eq.${id}&user_id=eq.${currentUser.id}`);
+    await db.from('likes').delete().eq('post_id', id).eq('user_id', currentUser.id);
     likedPostIds.delete(id);
     if (post) post.like_count = Math.max((post.like_count || 1) - 1, 0);
   } else {
-    await authPost('likes', { post_id: id, user_id: currentUser.id });
+    await db.from('likes').insert({ post_id: id, user_id: currentUser.id });
     likedPostIds.add(id);
     if (post) post.like_count = (post.like_count || 0) + 1;
   }
@@ -1275,11 +1280,11 @@ async function toggleBookmark(id, fromModal = false) {
   const bkmd = bookmarkedPostIds.has(id);
   const post  = allPosts.find(p => p.id === id);
   if (bkmd) {
-    await authDelete('bookmarks', `post_id=eq.${id}&user_id=eq.${currentUser.id}`);
+    await db.from('bookmarks').delete().eq('post_id', id).eq('user_id', currentUser.id);
     bookmarkedPostIds.delete(id);
     if (post) post.bookmark_count = Math.max((post.bookmark_count || 1) - 1, 0);
   } else {
-    await authPost('bookmarks', { post_id: id, user_id: currentUser.id });
+    await db.from('bookmarks').insert({ post_id: id, user_id: currentUser.id });
     bookmarkedPostIds.add(id);
     if (post) post.bookmark_count = (post.bookmark_count || 0) + 1;
   }
@@ -1297,7 +1302,7 @@ async function submitComment(postId) {
   const input = document.getElementById('commentInput');
   const content = input?.value?.trim();
   if (!content) return;
-  const { data, error } = await authPost('comments', { post_id: postId, user_id: currentUser.id, content });
+  const { data, error } = await db.from('comments').insert({ post_id: postId, user_id: currentUser.id, content }).select('*, profiles(name, avatar_url)').single();
   if (error) { toast('留言失敗', 'error'); return; }
   const cn = currentProfile?.name || '館員';
   const list = document.getElementById('commentList');
@@ -1409,10 +1414,11 @@ async function setPostStatus(id, status) {
   const labels = { approved: ['✅','確認核准上架？',`「${title}」將公開顯示。`,'核准上架','btn-success'], rejected: ['🚫','確認拒絕？',`「${title}」將被拒絕。`,'確認拒絕','btn-danger'] };
   const l = labels[status];
   const doUpdate = async () => {
-    const { error } = await authPatch('posts', `id=eq.${id}`, { status });
+    // 直接用 supabase-js 的 update（它內部會自動帶 session token）
+    const { error } = await db.from('posts').update({ status }).eq('id', id);
     if (error) {
-      console.error('setPostStatus error:', error);
-      toast('操作失敗：' + (error.message || JSON.stringify(error)), 'error');
+      console.error('setPostStatus error:', JSON.stringify(error));
+      toast('操作失敗：' + (error.message || error.code || JSON.stringify(error)), 'error');
       return;
     }
     toast(status==='approved' ? '✅ 已核准上架' : '🚫 已拒絕', status==='approved'?'success':'info');
@@ -1544,12 +1550,12 @@ async function submitPost() {
   const btn = document.getElementById('submitBtn');
   btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>提交中...';
 
-  const { data: post, error } = await authPost('posts', {
+  const { data: post, error } = await db.from('posts').insert({
     user_id: currentUser.id, title, content_type: 'text',
     tags: allTags, prompt,
     result_text: document.getElementById('resultEditor')?.innerText?.trim() || null,
     status: 'pending', sensitive_flags: flags
-  });
+  }).select().single();
 
   if (error || !post) {
     toast('提交失敗：' + (error?.message || ''), 'error');
@@ -1563,14 +1569,14 @@ async function submitPost() {
       const fname = file.name.replace(/\.[^.]+$/, '.webp');
       const path  = `${post.id}/${Date.now()}_${fname}`;
       const { data: up } = await authStorageUpload(path, blob, 'image/webp');
-      if (up) await authPost('attachments', { post_id: post.id, file_name: fname, file_url: up.publicUrl, file_type: 'image/webp', file_size: blob.size, is_webp: true });
+      if (up) await db.from('attachments').insert({ post_id: post.id, file_name: fname, file_url: up.publicUrl, file_type: 'image/webp', file_size: blob.size, is_webp: true });
     } catch(e) { console.warn('img upload:', e); }
   }
   for (const file of pendingFiles) {
     try {
       const path = `${post.id}/${Date.now()}_${file.name}`;
       const { data: up } = await authStorageUpload(path, file, file.type);
-      if (up) await authPost('attachments', { post_id: post.id, file_name: file.name, file_url: up.publicUrl, file_type: file.type, file_size: file.size, is_webp: false });
+      if (up) await db.from('attachments').insert({ post_id: post.id, file_name: file.name, file_url: up.publicUrl, file_type: file.type, file_size: file.size, is_webp: false });
     } catch(e) { console.warn('file upload:', e); }
   }
 
@@ -1743,11 +1749,13 @@ async function uploadAvatarImage(file) {
     });
   } catch(e) { /* use original */ }
   const path = `avatars/${currentUser.id}_${Date.now()}.webp`;
-  const { data, error } = await authStorageUpload(path, blob, 'image/webp');
-  if (error) { toast('上傳失敗：' + error.message, 'error'); return; }
-  window._pendingAvatarUrl = data.publicUrl;
+  const { data: storData, error: storErr } = await db.storage.from('attachments').upload(path, blob, { contentType:'image/webp', upsert:true });
+  if (storErr) { toast('上傳失敗：' + storErr.message, 'error'); return; }
+  const { data: pubData } = db.storage.from('attachments').getPublicUrl(path);
+  const avatarUrl = pubData.publicUrl;
+  window._pendingAvatarUrl = avatarUrl;
   const preview = document.getElementById('previewAvatar');
-  if (preview) { preview.style.background = 'none'; preview.innerHTML = `<img src="${data.publicUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`; }
+  if (preview) { preview.style.background = 'none'; preview.innerHTML = `<img src="${avatarUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`; }
   document.querySelectorAll('.avatar-option').forEach(el => el.classList.remove('selected'));
   toast('圖片上傳成功', 'success');
 }
@@ -1756,7 +1764,7 @@ async function saveProfile() {
   if (!newName) { toast('名稱不能為空', 'error'); return; }
   const updates = { name: newName };
   if (window._pendingAvatarUrl !== undefined) updates.avatar_url = window._pendingAvatarUrl;
-  const { error } = await authPatch('profiles', `id=eq.${currentUser.id}`, updates);
+  const { error } = await db.from('profiles').update(updates).eq('id', currentUser.id);
   if (error) { toast('儲存失敗：' + error.message, 'error'); return; }
   currentProfile = { ...currentProfile, ...updates };
   window._pendingAvatarUrl = undefined;
@@ -1854,21 +1862,21 @@ async function saveAndResubmit() {
     : (document.getElementById('editPostTool')?.value || '');
   const cat = document.getElementById('editPostCategory')?.value || '';
   const allTags = [...new Set([tool, cat, ..._editTags].filter(Boolean))];
-  const { error } = await authPatch('posts', `id=eq.${_editingPostId}`, { title, prompt, result_text: result, tags: allTags, status: 'pending', sensitive_flags: [] });
+  const { error } = await db.from('posts').update({ title, prompt, result_text: result, tags: allTags, status: 'pending', sensitive_flags: [] }).eq('id', _editingPostId);
   if (error) { toast('提交失敗：' + error.message, 'error'); return; }
   for (const file of _editPendingImages) {
     try {
       const blob = await convertToWebP(file); const fname = file.name.replace(/\.[^.]+$/,'.webp');
       const path = `${_editingPostId}/${Date.now()}_${fname}`;
       const { data: up } = await authStorageUpload(path, blob, 'image/webp');
-      if (up) await authPost('attachments', { post_id:_editingPostId, file_name:fname, file_url:up.publicUrl, file_type:'image/webp', file_size:blob.size, is_webp:true });
+      if (up) await db.from('attachments').insert({ post_id:_editingPostId, file_name:fname, file_url:up.publicUrl, file_type:'image/webp', file_size:blob.size, is_webp:true });
     } catch(e) { console.warn(e); }
   }
   for (const file of _editPendingFiles) {
     try {
       const path = `${_editingPostId}/${Date.now()}_${file.name}`;
       const { data: up } = await authStorageUpload(path, file, file.type);
-      if (up) await authPost('attachments', { post_id:_editingPostId, file_name:file.name, file_url:up.publicUrl, file_type:file.type, file_size:file.size, is_webp:false });
+      if (up) await db.from('attachments').insert({ post_id:_editingPostId, file_name:file.name, file_url:up.publicUrl, file_type:file.type, file_size:file.size, is_webp:false });
     } catch(e) { console.warn(e); }
   }
   document.getElementById('editPostModal').classList.remove('show');
@@ -1897,7 +1905,7 @@ async function loadAiLinks() {
 }
 async function saveAiLinks(links) {
   for (let i = 0; i < links.length; i++) {
-    if (links[i].id) await authPatch('ai_links', `id=eq.${links[i].id}`, { sort_order: i+1 });
+    if (links[i].id) await db.from('ai_links').update({ sort_order: i+1 }).eq('id', links[i].id);
   }
   _aiLinksCache = links;
 }
@@ -1917,7 +1925,7 @@ async function renderAiLinks() {
   } catch(e) { console.warn('renderAiLinks:', e); }
 }
 async function removeAiLink(id) {
-  await authDelete('ai_links', `id=eq.${id}`);
+  await db.from('ai_links').delete().eq('id', id);
   await renderAiLinks();
 }
 async function openAiMgr() {
@@ -1975,7 +1983,7 @@ async function addAiLink() {
   if (!name || !url) { toast('請填寫名稱和網址', 'error'); return; }
   if (!url.startsWith('http')) { toast('網址請以 https:// 開頭', 'error'); return; }
   const maxOrder = (_aiLinksCache||[]).reduce((m,l) => Math.max(m, l.sort_order||0), 0);
-  const { error } = await authPost('ai_links', { name, url, logo, sort_order: maxOrder+1 });
+  const { error } = await db.from('ai_links').insert({ name, url, logo, sort_order: maxOrder+1 }).then(r => r);
   if (error) { toast('新增失敗：'+(error.message||''), 'error'); return; }
   await renderAiLinks(); await renderAiMgrList();
   ['aiNewName','aiNewUrl','aiNewLogoUrl'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
