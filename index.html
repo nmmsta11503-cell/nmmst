@@ -312,6 +312,18 @@ h1,h2,h3{font-family:'Noto Serif TC',serif}
 .tags-input{background:none;border:none;outline:none;color:var(--text);font-size:13px;min-width:60px;font-family:'Noto Sans TC',sans-serif}
 
 /* SENSITIVE WARNING */
+/* Lightbox */
+.lightbox{display:none;position:fixed;inset:0;background:rgba(0,0,0,.95);z-index:600;align-items:center;justify-content:center;flex-direction:column}
+.lightbox.show{display:flex}
+.lightbox-img{max-width:90vw;max-height:80vh;object-fit:contain;border-radius:var(--radius);user-select:none}
+.lightbox-close{position:absolute;top:16px;right:20px;background:none;border:none;color:#fff;font-size:28px;cursor:pointer;opacity:.7;transition:opacity .2s}
+.lightbox-close:hover{opacity:1}
+.lightbox-prev,.lightbox-next{position:absolute;top:50%;transform:translateY(-50%);background:rgba(255,255,255,.1);border:none;color:#fff;font-size:24px;cursor:pointer;padding:12px 16px;border-radius:var(--radius);transition:background .2s;user-select:none}
+.lightbox-prev{left:16px}.lightbox-next{right:16px}
+.lightbox-prev:hover,.lightbox-next:hover{background:rgba(255,255,255,.25)}
+.lightbox-counter{color:rgba(255,255,255,.6);font-size:13px;margin-top:12px}
+.lightbox-prev:disabled,.lightbox-next:disabled{opacity:.2;cursor:default}
+
 /* 確認對話框 */
 .confirm-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:500;align-items:center;justify-content:center;padding:1rem}
 .confirm-overlay.show{display:flex}
@@ -605,7 +617,6 @@ h1,h2,h3{font-family:'Noto Serif TC',serif}
         </div>
       </div>
       <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:.5rem">
-        <button class="btn btn-outline" onclick="saveDraft()"><i class="fas fa-floppy-disk"></i>儲存草稿</button>
         <button class="btn btn-primary" onclick="confirmSubmit()" id="submitBtn"><i class="fas fa-paper-plane"></i>送審</button>
       </div>
       <div class="submit-status" id="submitStatus" style="display:none">
@@ -748,6 +759,15 @@ h1,h2,h3{font-family:'Noto Serif TC',serif}
       <button class="btn btn-primary" onclick="saveAndResubmit()"><i class="fas fa-paper-plane"></i>儲存並重新提交</button>
     </div>
   </div>
+</div>
+
+<!-- Lightbox -->
+<div class="lightbox" id="lightbox" onclick="if(event.target===this)closeLightbox()">
+  <button class="lightbox-close" onclick="closeLightbox()"><i class="fas fa-xmark"></i></button>
+  <button class="lightbox-prev" id="lbPrev" onclick="lightboxMove(-1)"><i class="fas fa-chevron-left"></i></button>
+  <img class="lightbox-img" id="lightboxImg" src="" alt="">
+  <button class="lightbox-next" id="lbNext" onclick="lightboxMove(1)"><i class="fas fa-chevron-right"></i></button>
+  <div class="lightbox-counter" id="lbCounter"></div>
 </div>
 
 <!-- 確認對話框 -->
@@ -1192,7 +1212,6 @@ async function openPost(id) {
         ${(p.tags || []).map(t => `<span class="tag">${t}</span>`).join('')}
         <span style="margin-left:auto;font-size:12px;color:var(--text3)">${fmtDate(p.created_at)} · ${name}</span>
       </div>
-      ${imgs.map(a => `<img src="${a.file_url}" style="width:100%;border-radius:var(--radius);margin-bottom:1rem;max-height:400px;object-fit:contain">`).join('')}
       <div class="prompt-block">
         <div class="prompt-label"><i class="fas fa-code" style="margin-right:5px"></i>Prompt 提示詞</div>
         <button class="copy-prompt-btn" onclick="copyPrompt(this)"><i class="fas fa-copy"></i> 複製</button>
@@ -1202,11 +1221,26 @@ async function openPost(id) {
         <div class="prompt-label" style="color:var(--text2);margin-bottom:.4rem;margin-top:1rem"><i class="fas fa-robot" style="margin-right:5px"></i>AI 生成結果</div>
         <div class="prompt-block" style="background:var(--bg)"><div class="prompt-text">${p.result_text}</div></div>
       </div>` : ''}
-      ${files.length ? `<div style="margin-top:1rem"><div class="prompt-label">附件檔案</div>${files.map(a => `
+      ${imgs.length ? `<div style="margin-top:1rem">
+        <div class="prompt-label" style="margin-bottom:.5rem"><i class="fas fa-images" style="margin-right:5px"></i>圖片（${imgs.length} 張）</div>
+        <div id="postImgGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px">
+          ${imgs.map((a, i) => `<img src="${a.file_url}" alt="${a.file_name}"
+            data-idx="${i}"
+            style="width:100%;height:140px;object-fit:cover;border-radius:var(--radius);cursor:zoom-in;border:1px solid var(--border)"
+            onclick="openLightbox(null, ${i})"
+            loading="lazy">`).join('')}
+        </div>
+      </div>` : ''}
+      ${files.length ? `<div style="margin-top:1rem">
+        <div class="prompt-label" style="margin-bottom:.5rem"><i class="fas fa-paperclip" style="margin-right:5px"></i>附件檔案</div>
+        ${files.map(a => `
         <div class="uploaded-file" style="margin-top:6px">
-          <i class="fas fa-file fi-icon"></i><span class="fi-name">${a.file_name}</span>
-          <a href="${a.file_url}" target="_blank" class="btn btn-outline btn-sm"><i class="fas fa-download"></i>下載</a>
-        </div>`).join('')}</div>` : ''}
+          <i class="fas fa-file fi-icon"></i>
+          <span class="fi-name">${a.file_name}</span>
+          <span class="fi-size">${a.file_size ? Math.round(a.file_size/1024)+'KB' : ''}</span>
+          <a href="${a.file_url}" target="_blank" download class="btn btn-outline btn-sm"><i class="fas fa-download"></i>下載</a>
+        </div>`).join('')}
+      </div>` : ''}
       <div class="comments-section">
         <div class="comments-title">💬 討論（${comments.length}）</div>
         <div id="commentList">
@@ -1215,20 +1249,33 @@ async function openPost(id) {
               const cn = c.profiles?.name || '館員';
               const ca = c.profiles?.avatar_url;
               const cs = ca?.startsWith('preset:') ? (AVATAR_PRESETS[parseInt(ca.replace('preset:',''))]?.bg || 'linear-gradient(135deg,var(--gold),#8b6914)') : 'linear-gradient(135deg,var(--gold),#8b6914)';
-              const cc = ca?.startsWith('http') ? `<img src="${ca}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">` : cn.slice(0,1);
-              return `<div class="comment-item" style="display:flex;gap:10px;align-items:flex-start">
-                <div class="avatar" style="width:30px;height:30px;font-size:11px;flex-shrink:0;background:${cs};border:1px solid var(--border);overflow:hidden">${cc}</div>
-                <div style="flex:1"><div class="comment-author">${cn}</div><div class="comment-text">${c.content}</div><div class="comment-time">${fmtDateTime(c.created_at)}</div></div>
-              </div>`;
+              const cc = ca?.startsWith('http') ? '<img src="'+ca+'" style="width:100%;height:100%;object-fit:cover;border-radius:50%">' : cn.slice(0,1);
+              return '<div class="comment-item" style="display:flex;gap:10px;align-items:flex-start">'
+                + '<div class="avatar" style="width:30px;height:30px;font-size:11px;flex-shrink:0;background:'+cs+';border:1px solid var(--border);overflow:hidden">'+cc+'</div>'
+                + '<div style="flex:1"><div class="comment-author">'+cn+'</div><div class="comment-text">'+c.content+'</div><div class="comment-time">'+fmtDateTime(c.created_at)+'</div></div>'
+                + '</div>';
             }).join('')}
         </div>
-        ${currentUser ? `<div class="comment-input-row">
-          <input id="commentInput" class="comment-input" type="text" placeholder="留下你的想法..." onkeydown="if(event.key==='Enter')submitComment('${p.id}')">
-          <button class="btn btn-primary btn-sm" onclick="submitComment('${p.id}')"><i class="fas fa-paper-plane"></i></button>
-        </div>` : `<p style="font-size:.82rem;color:var(--text3);margin-top:.8rem"><a onclick="nav('login')" style="color:var(--gold);cursor:pointer">登入</a>後即可留言</p>`}
+        <div id="commentInputArea"></div>
       </div>`;
 
-    document.getElementById('modalStats').innerHTML = `
+  // 動態加入留言輸入區（避免嵌套引號問題）
+  const cia = document.getElementById('commentInputArea');
+  if (cia) {
+    if (currentUser) {
+      const row = document.createElement('div'); row.className = 'comment-input-row';
+      const inp = document.createElement('input'); inp.id='commentInput'; inp.className='comment-input'; inp.type='text'; inp.placeholder='留下你的想法...';
+      inp.addEventListener('keydown', e => { if (e.key==='Enter') submitComment(p.id); });
+      const btn = document.createElement('button'); btn.className='btn btn-primary btn-sm';
+      btn.innerHTML='<i class="fas fa-paper-plane"></i>';
+      btn.addEventListener('click', () => submitComment(p.id));
+      row.appendChild(inp); row.appendChild(btn); cia.appendChild(row);
+    } else {
+      cia.innerHTML = '<p style="font-size:.82rem;color:var(--text3);margin-top:.8rem">登入後即可留言</p>';
+    }
+  }
+
+document.getElementById('modalStats').innerHTML = `
       <button class="stat-item ${liked ? 'liked' : ''}" onclick="toggleLike('${p.id}',true)" id="mLike">
         <i class="${liked ? 'fas' : 'far'} fa-heart"></i><span id="mLikeCount">${p.like_count || 0}</span> 按讚
       </button>
@@ -1514,22 +1561,60 @@ async function convertToWebP(file) {
   });
 }
 function handleImages(files) {
-  const list = document.getElementById('imgList');
-  Array.from(files).forEach(f => {
-    pendingImages.push(f);
-    const d = document.createElement('div'); d.className = 'uploaded-file';
-    d.innerHTML = `<i class="fas fa-image fi-icon"></i><span class="fi-name">${f.name.replace(/\.[^.]+$/,'.webp')}</span><span class="webp-tag">WebP</span><span class="fi-size">${(f.size/1024).toFixed(0)}KB</span>`;
-    list.appendChild(d);
-  });
+  Array.from(files).forEach(f => { pendingImages.push(f); });
+  renderPendingImages();
 }
+function renderPendingImages() {
+  const list = document.getElementById('imgList'); if (!list) return;
+  list.innerHTML = pendingImages.map((f, i) => `
+    <div class="uploaded-file" draggable="true"
+      ondragstart="fileDragStart(event,'img',${i})" ondragover="fileDragOver(event)"
+      ondrop="fileDrop(event,'img',${i})" ondragend="fileDragEnd()"
+      style="cursor:grab">
+      <i class="fas fa-grip-vertical" style="color:var(--text3);margin-right:4px;cursor:grab"></i>
+      <i class="fas fa-image fi-icon"></i>
+      <span class="fi-name">${f.name.replace(/\.[^.]+$/,'.webp')}</span>
+      <span class="webp-tag">WebP</span>
+      <span class="fi-size">${(f.size/1024).toFixed(0)}KB</span>
+      <button class="fi-remove" onclick="removePendingImg(${i})"><i class="fas fa-xmark"></i></button>
+    </div>`).join('');
+}
+function removePendingImg(i) { pendingImages.splice(i,1); renderPendingImages(); }
 function handleFilesUpload(files) {
-  const list = document.getElementById('fileList');
-  Array.from(files).forEach(f => {
-    pendingFiles.push(f);
-    const d = document.createElement('div'); d.className = 'uploaded-file';
-    d.innerHTML = `<i class="fas fa-file fi-icon"></i><span class="fi-name">${f.name}</span><span class="fi-size">${(f.size/1024).toFixed(0)}KB</span>`;
-    list.appendChild(d);
-  });
+  Array.from(files).forEach(f => { pendingFiles.push(f); });
+  renderPendingFiles();
+}
+function renderPendingFiles() {
+  const list = document.getElementById('fileList'); if (!list) return;
+  list.innerHTML = pendingFiles.map((f, i) => `
+    <div class="uploaded-file" draggable="true"
+      ondragstart="fileDragStart(event,'file',${i})" ondragover="fileDragOver(event)"
+      ondrop="fileDrop(event,'file',${i})" ondragend="fileDragEnd()"
+      style="cursor:grab">
+      <i class="fas fa-grip-vertical" style="color:var(--text3);margin-right:4px;cursor:grab"></i>
+      <i class="fas fa-file fi-icon"></i>
+      <span class="fi-name">${f.name}</span>
+      <span class="fi-size">${(f.size/1024).toFixed(0)}KB</span>
+      <button class="fi-remove" onclick="removePendingFile(${i})"><i class="fas fa-xmark"></i></button>
+    </div>`).join('');
+}
+function removePendingFile(i) { pendingFiles.splice(i,1); renderPendingFiles(); }
+
+// 拖曳排序
+let _fileDragFrom = null; let _fileDragType = null;
+function fileDragStart(e,type,i) { _fileDragFrom=i; _fileDragType=type; e.dataTransfer.effectAllowed='move'; e.currentTarget.style.opacity='.4'; }
+function fileDragOver(e) { e.preventDefault(); e.dataTransfer.dropEffect='move'; }
+function fileDrop(e,type,i) {
+  e.preventDefault();
+  if (_fileDragFrom===null || _fileDragFrom===i || _fileDragType!==type) return;
+  const arr = type==='img' ? pendingImages : pendingFiles;
+  const moved = arr.splice(_fileDragFrom,1)[0]; arr.splice(i,0,moved);
+  if (type==='img') renderPendingImages(); else renderPendingFiles();
+  _fileDragFrom=null;
+}
+function fileDragEnd() {
+  document.querySelectorAll('.uploaded-file').forEach(el=>el.style.opacity='1');
+  _fileDragFrom=null;
 }
 function dragOver(e, el) { e.preventDefault(); el.classList.add('drag'); }
 function dragLeave(el) { if (el) el.classList.remove('drag'); }
@@ -1600,9 +1685,13 @@ async function submitPost() {
     } catch(e) { console.error('file upload error:', e); toast('檔案上傳失敗：' + e.message, 'error'); }
   }
 
+  // 隱藏表單，顯示成功畫面
   document.getElementById('submitFormArea').style.display = 'none';
-  document.getElementById('submitStatus').style.display = 'block';
+  const statusEl = document.getElementById('submitStatus');
+  if (statusEl) statusEl.style.display = 'block';
   btn.style.display = 'none';
+  // 清空暫存資料
+  uploadTags = []; pendingImages = []; pendingFiles = [];
   toast('已送出，等待審核 ✓', 'success');
   loadPendingCount();
 }
@@ -1615,9 +1704,8 @@ function resetUpload() {
   btn.style.display = ''; btn.disabled = false; btn.innerHTML = '<i class="fas fa-paper-plane"></i>送審';
   ['postTitle','tagInput'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
   ['promptEditor','resultEditor'].forEach(id => { const el = document.getElementById(id); if (el) el.innerHTML = ''; });
-  ['imgList','fileList'].forEach(id => { const el = document.getElementById(id); if (el) el.innerHTML = ''; });
   uploadTags = []; pendingImages = []; pendingFiles = [];
-  renderUploadTags();
+  renderUploadTags(); renderPendingImages(); renderPendingFiles();
 }
 function handleToolChange(val) {
   const c = document.getElementById('postToolCustom');
@@ -2010,6 +2098,45 @@ async function addAiLink() {
   const p = document.getElementById('aiNewLogoPreview'); if(p) p.innerHTML='<i class="fas fa-image"></i>';
   _aiNewLogoDataUrl = '';
   toast(`已新增 ${name}`, 'success');
+}
+
+// =============================================
+// LIGHTBOX
+// =============================================
+let _lbUrls = [];
+let _lbIdx  = 0;
+
+function openLightbox(urls, idx) {
+  // If urls is null, read from img elements in #postImgGrid
+  if (!urls) {
+    const imgs = document.querySelectorAll('#postImgGrid img');
+    _lbUrls = Array.from(imgs).map(img => img.src);
+  } else {
+    _lbUrls = typeof urls === 'string' ? JSON.parse(urls) : urls;
+  }
+  _lbIdx  = idx;
+  _showLb();
+  document.getElementById('lightbox').classList.add('show');
+  document.addEventListener('keydown', _lbKey);
+}
+function closeLightbox() {
+  document.getElementById('lightbox').classList.remove('show');
+  document.removeEventListener('keydown', _lbKey);
+}
+function lightboxMove(dir) {
+  _lbIdx = Math.max(0, Math.min(_lbUrls.length - 1, _lbIdx + dir));
+  _showLb();
+}
+function _showLb() {
+  document.getElementById('lightboxImg').src = _lbUrls[_lbIdx];
+  document.getElementById('lbCounter').textContent = `${_lbIdx + 1} / ${_lbUrls.length}`;
+  document.getElementById('lbPrev').disabled = _lbIdx === 0;
+  document.getElementById('lbNext').disabled = _lbIdx === _lbUrls.length - 1;
+}
+function _lbKey(e) {
+  if (e.key === 'ArrowLeft')  lightboxMove(-1);
+  if (e.key === 'ArrowRight') lightboxMove(1);
+  if (e.key === 'Escape')     closeLightbox();
 }
 
 // =============================================
