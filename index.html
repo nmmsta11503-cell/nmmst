@@ -283,7 +283,7 @@ h1,h2,h3{font-family:'Noto Serif TC',serif}
 
 /* SENSITIVE WARNING */
 /* 確認對話框 */
-.confirm-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:500;align-items:center;justify-content:center}
+.confirm-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:500;align-items:center;justify-content:center;padding:1rem}
 .confirm-overlay.show{display:flex}
 .confirm-box{background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius2);padding:1.75rem;max-width:360px;width:90%;text-align:center;box-shadow:0 16px 48px rgba(0,0,0,.5)}
 .confirm-box h3{font-size:1.05rem;margin-bottom:.6rem;color:var(--text)}
@@ -1229,7 +1229,7 @@ function renderCards() {
 async function openPost(id) {
   // increment view
   const post = allPosts.find(p => p.id === id) || {};
-  getAuthDb().then(adb => adb.from('posts').update({ view_count: (post.view_count || 0) + 1 }).eq('id', id));
+  authPatch('posts', `id=eq.${id}`, { view_count: (post.view_count || 0) + 1 });
   if (post.view_count !== undefined) post.view_count++;
 
   // fetch full post
@@ -1317,11 +1317,11 @@ async function toggleLike(id, el, fromModal = false) {
   const isLiked = likedPostIds.has(id);
   const post = allPosts.find(p => p.id === id);
   if (isLiked) {
-    const adb3 = await getAuthDb(); await adb3.from('likes').delete().eq('post_id', id).eq('user_id', currentUser.id);
+    await authDelete('likes', `post_id=eq.${id}&user_id=eq.${currentUser.id}`);
     likedPostIds.delete(id);
     if (post) post.like_count = Math.max((post.like_count || 1) - 1, 0);
   } else {
-    const adb2 = await getAuthDb(); await adb2.from('likes').insert({ post_id: id, user_id: currentUser.id });
+    await authPost('likes', { post_id: id, user_id: currentUser.id });
     likedPostIds.add(id);
     if (post) post.like_count = (post.like_count || 0) + 1;
   }
@@ -1345,11 +1345,11 @@ async function toggleBookmark(id, fromModal = false) {
   const isBookmarked = bookmarkedPostIds.has(id);
   const post = allPosts.find(p => p.id === id);
   if (isBookmarked) {
-    const adb5 = await getAuthDb(); await adb5.from('bookmarks').delete().eq('post_id', id).eq('user_id', currentUser.id);
+    await authDelete('bookmarks', `post_id=eq.${id}&user_id=eq.${currentUser.id}`);
     bookmarkedPostIds.delete(id);
     if (post) post.bookmark_count = Math.max((post.bookmark_count || 1) - 1, 0);
   } else {
-    const adb4 = await getAuthDb(); await adb4.from('bookmarks').insert({ post_id: id, user_id: currentUser.id });
+    await authPost('bookmarks', { post_id: id, user_id: currentUser.id });
     bookmarkedPostIds.add(id);
     if (post) post.bookmark_count = (post.bookmark_count || 0) + 1;
   }
@@ -1479,10 +1479,20 @@ async function setPostStatus(id, status) {
 }
 
 async function _doSetStatus(id, status) {
-  const adb8 = await getAuthDb();
-  const { error } = await adb8.from('posts').update({ status }).eq('id', id);
-  if (error) { toast('操作失敗', 'error'); return; }
-  toast(status === 'approved' ? '已核准上架 ✓' : '已拒絕', status === 'approved' ? 'success' : 'info');
+  const { data: { session } } = await db.auth.getSession();
+  if (!session) { toast('請重新登入', 'error'); return; }
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/posts?id=eq.${id}`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      'apikey': SUPABASE_KEY,
+      'Authorization': `Bearer ${session.access_token}`,
+      'Prefer': 'return=minimal'
+    },
+    body: JSON.stringify({ status })
+  });
+  if (!res.ok) { const e = await res.text(); toast('操作失敗：' + e, 'error'); return; }
+  toast(status === 'approved' ? '✅ 已核准上架' : '🚫 已拒絕', status === 'approved' ? 'success' : 'info');
   loadAdminPosts();
   loadPendingCount();
 }
@@ -1616,8 +1626,7 @@ async function submitPost() {
     sensitive_flags: sensitiveFlags,
   };
 
-  const adb = await getAuthDb();
-  const { data: post, error } = await adb.from('posts').insert(payload).select().single();
+  const { data: post, error } = await authPost('posts', payload);
   if (error) { toast('提交失敗：' + error.message, 'error'); document.getElementById('submitBtn').disabled = false; document.getElementById('submitBtn').innerHTML = '<i class="fas fa-paper-plane"></i>送審'; return; }
 
   // upload images
@@ -1626,26 +1635,18 @@ async function submitPost() {
       const webpBlob = await convertToWebP(file);
       const fname = file.name.replace(/\.[^.]+$/, '.webp');
       const path = `${post.id}/${Date.now()}_${fname}`;
-      const _adbImg = await getAuthDb();
-      const { data: up, error: upErr } = await _adbImg.storage.from('attachments').upload(path, webpBlob, { contentType: 'image/webp', upsert: true });
+      const { data: imgUp, error: upErr } = await authStorageUpload(path, webpBlob, 'image/webp');
       if (upErr) { console.warn('img upload err', upErr.message); }
-      if (up) {
-        const { data: pub } = _adbImg.storage.from('attachments').getPublicUrl(path);
-        await _adbImg.from('attachments').insert({ post_id: post.id, file_name: fname, file_url: pub.publicUrl, file_type: 'image/webp', file_size: webpBlob.size, is_webp: true });
-      }
+      else { await authPost('attachments', { post_id: post.id, file_name: fname, file_url: imgUp.publicUrl, file_type: 'image/webp', file_size: webpBlob.size, is_webp: true }); }
     } catch (e) { console.warn('image upload failed', e); }
   }
   // upload files
   for (const file of pendingFiles) {
     try {
       const path = `${post.id}/${Date.now()}_${file.name}`;
-      const _adbFile = await getAuthDb();
-      const { data: up, error: upErr2 } = await _adbFile.storage.from('attachments').upload(path, file, { contentType: file.type, upsert: true });
+      const { data: fileUp, error: upErr2 } = await authStorageUpload(path, file, file.type);
       if (upErr2) { console.warn('file upload err', upErr2.message); }
-      if (up) {
-        const { data: pub } = _adbFile.storage.from('attachments').getPublicUrl(path);
-        await _adbFile.from('attachments').insert({ post_id: post.id, file_name: file.name, file_url: pub.publicUrl, file_type: file.type, file_size: file.size, is_webp: false });
-      }
+      else { await authPost('attachments', { post_id: post.id, file_name: file.name, file_url: fileUp.publicUrl, file_type: file.type, file_size: file.size, is_webp: false }); }
     } catch (e) { console.warn('file upload failed', e); }
   }
 
@@ -1966,11 +1967,7 @@ async function saveAndResubmit() {
     : document.getElementById('editPostTool').value;
   const cat = document.getElementById('editPostCategory').value;
   const allTags = [...new Set([tool, cat, ..._editTags].filter(Boolean))];
-  const adb = await getAuthDb();
-  const { error } = await adb.from('posts').update({
-    title, prompt, result_text, tags: allTags,
-    status: 'pending', sensitive_flags: []
-  }).eq('id', _editingPostId);
+  const { error } = await authPatch('posts', `id=eq.${_editingPostId}`, { title, prompt, result_text, tags: allTags, status: 'pending', sensitive_flags: [] });
   if (error) { toast('提交失敗：' + error.message, 'error'); return; }
   // upload new images
   for (const file of _editPendingImages) {
@@ -1978,22 +1975,16 @@ async function saveAndResubmit() {
       const webpBlob = await convertToWebP(file);
       const fname = file.name.replace(/\.[^.]+$/,'.webp');
       const path = `${_editingPostId}/${Date.now()}_${fname}`;
-      const { data: up } = await adb.storage.from('attachments').upload(path, webpBlob, { contentType:'image/webp', upsert:true });
-      if (up) {
-        const { data: pub } = adb.storage.from('attachments').getPublicUrl(path);
-        await adb.from('attachments').insert({ post_id:_editingPostId, file_name:fname, file_url:pub.publicUrl, file_type:'image/webp', file_size:webpBlob.size, is_webp:true });
-      }
+      const { data: rup } = await authStorageUpload(path, webpBlob, 'image/webp');
+      if (rup) { await authPost('attachments', { post_id:_editingPostId, file_name:fname, file_url:rup.publicUrl, file_type:'image/webp', file_size:webpBlob.size, is_webp:true }); }
     } catch(e) { console.warn(e); }
   }
   // upload new files
   for (const file of _editPendingFiles) {
     try {
       const path = `${_editingPostId}/${Date.now()}_${file.name}`;
-      const { data: up } = await adb.storage.from('attachments').upload(path, file, { contentType:file.type, upsert:true });
-      if (up) {
-        const { data: pub } = adb.storage.from('attachments').getPublicUrl(path);
-        await adb.from('attachments').insert({ post_id:_editingPostId, file_name:file.name, file_url:pub.publicUrl, file_type:file.type, file_size:file.size, is_webp:false });
-      }
+      const { data: rfup } = await authStorageUpload(path, file, file.type);
+      if (rfup) { await authPost('attachments', { post_id:_editingPostId, file_name:file.name, file_url:rfup.publicUrl, file_type:file.type, file_size:file.size, is_webp:false }); }
     } catch(e) { console.warn(e); }
   }
   document.getElementById('editPostModal').classList.remove('show');
@@ -2116,14 +2107,10 @@ async function uploadAvatarImage(file) {
   } catch(e) { /* use original */ }
 
   const path = `avatars/${currentUser.id}_${Date.now()}.webp`;
-  const adbA = await getAuthDb();
-  const { data, error } = await adbA.storage.from('attachments').upload(path, blob, {
-    contentType: 'image/webp', upsert: true
-  });
+  const { data, error } = await authStorageUpload(path, blob, 'image/webp');
   if (error) { toast('上傳失敗：' + error.message, 'error'); return; }
-
-  const { data: pub } = adbA.storage.from('attachments').getPublicUrl(path);
-  window._pendingAvatarUrl = pub.publicUrl;
+  const pub = data;
+  window._pendingAvatarUrl = pub?.publicUrl || '';
 
   // Update preview
   const preview = document.getElementById('previewAvatar');
@@ -2144,8 +2131,7 @@ async function saveProfile() {
     updates.avatar_url = window._pendingAvatarUrl;
   }
 
-  const adb7 = await getAuthDb();
-  const { error } = await adb7.from('profiles').update(updates).eq('id', currentUser.id);
+  const { error } = await authPatch('profiles', `id=eq.${currentUser.id}`, updates);
   if (error) { toast('儲存失敗：' + error.message, 'error'); return; }
 
   // Update local state
