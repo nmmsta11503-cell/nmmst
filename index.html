@@ -76,6 +76,7 @@ h1,h2,h3{font-family:'Noto Serif TC',serif}
 
 /* HEADER */
 .header{background:var(--bg2);border-bottom:1px solid var(--border);padding:0 1.25rem;display:flex;align-items:center;gap:1.25rem;height:72px;position:sticky;top:0;z-index:100;overflow:hidden}
+.header-right{display:flex;align-items:center;gap:6px;flex-shrink:0}
 .logo{display:flex;align-items:center;gap:8px;cursor:pointer;text-decoration:none;flex-shrink:0;min-width:0}
 .logo-img{height:52px;width:auto;object-fit:contain;display:block;flex-shrink:0;max-width:180px}
 .logo-divider{width:1px;height:22px;background:var(--border2);flex-shrink:0}
@@ -113,20 +114,22 @@ h1,h2,h3{font-family:'Noto Serif TC',serif}
 }
 .mobile-menu .nav-btn i{width:22px;text-align:center}
 .mobile-menu-divider{height:1px;background:var(--border);margin:4px 0}
-/* 桌面版隱藏漢堡 */
-@media(min-width:641px){ .hamburger{display:none!important} .mobile-menu{display:none!important} }
+/* 桌面版：漢堡隱藏 */
+@media(min-width:641px){
+  .hamburger{display:none!important}
+  .mobile-menu{display:none!important}
+}
 /* 手機版 */
 @media(max-width:640px){
   .logo-text-wrap{display:none}
   .logo-divider{display:none}
   .nav{display:none!important}
-  .hamburger{display:flex}
+  .hamburger{display:flex!important}
   .header{gap:.5rem;padding:0 .75rem}
   .user-area .btn span{display:none}
   .user-area .btn{padding:7px 10px;min-width:unset}
-  /* theme toggle 和 hamburger 都保留，theme 在 hamburger 前 */
-  .theme-toggle{order:1}
-  .hamburger{order:2}
+  /* theme-toggle 跟著漢堡一起，但 theme 不能跟漢堡在同一個群組 */
+  .header-right{display:flex;align-items:center;gap:6px}
 }
 .btn{padding:7px 18px;border-radius:var(--radius);font-size:13px;font-family:'Noto Sans TC',sans-serif;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:6px;border:none}
 .btn-primary{background:var(--gold);color:#0f0e0d;font-weight:700}
@@ -895,14 +898,26 @@ async function authDelete(table, filter) {
   if (!res.ok) { const e = await res.text(); return { error: { message: e } }; }
   return { error: null };
 }
+function sanitizeStoragePath(path) {
+  // 把檔名中的中文、空白、特殊字元換成安全字元
+  return path.split('/').map((seg, i) => {
+    if (i === 0) return seg; // post_id 不動
+    return seg
+      .replace(/[^ -]/g, c => encodeURIComponent(c).replace(/%/g,'_'))
+      .replace(/[^a-zA-Z0-9._\-]/g, '_')
+      .replace(/_+/g, '_');
+  }).join('/');
+}
+
 async function authStorageUpload(path, blob, contentType) {
+  const safePath = sanitizeStoragePath(path);
   try {
     // 取得使用者 JWT，確保 Storage RLS 可以識別身份
     const { data: { session } } = await db.auth.getSession();
     const token = session?.access_token;
     
     // 用 fetch 直接上傳，帶使用者 JWT
-    const res = await fetch(`${SUPABASE_URL}/storage/v1/object/attachments/${path}`, {
+    const res = await fetch(`${SUPABASE_URL}/storage/v1/object/attachments/${safePath}`, {
       method: 'POST',
       headers: {
         'apikey': SUPABASE_KEY,
@@ -917,7 +932,7 @@ async function authStorageUpload(path, blob, contentType) {
       console.error('Storage upload failed:', res.status, errText);
       return { data: null, error: { message: `Storage ${res.status}: ${errText}` } };
     }
-    const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/attachments/${path}`;
+    const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/attachments/${safePath}`;
     console.log('Storage upload OK:', publicUrl);
     return { data: { publicUrl }, error: null };
   } catch(e) {
@@ -1219,6 +1234,10 @@ async function openPost(id) {
     const name  = p.profiles?.name || '館員';
     const imgs  = (p.attachments || []).filter(a => a.is_webp || a.file_type?.startsWith('image'));
     const files = (p.attachments || []).filter(a => !a.is_webp && !a.file_type?.startsWith('image'));
+    // 修正舊版含中文字的 URL
+    const fixUrl = url => {
+      try { return new URL(url).href; } catch(e) { return encodeURI(url); }
+    };
 
     document.getElementById('modalTitle').textContent = p.title;
     document.getElementById('modalBody').innerHTML = `
@@ -1242,6 +1261,7 @@ async function openPost(id) {
             data-idx="${i}"
             style="width:100%;height:140px;object-fit:cover;border-radius:var(--radius);cursor:zoom-in;border:1px solid var(--border)"
             onclick="openLightbox(null, ${i})"
+            onerror="this.style.display='none'"
             loading="lazy">`).join('')}
         </div>
       </div>` : ''}
@@ -1252,7 +1272,7 @@ async function openPost(id) {
           <i class="fas fa-file fi-icon"></i>
           <span class="fi-name">${a.file_name}</span>
           <span class="fi-size">${a.file_size ? Math.round(a.file_size/1024)+'KB' : ''}</span>
-          <a href="${a.file_url}" target="_blank" download class="btn btn-outline btn-sm"><i class="fas fa-download"></i>下載</a>
+          <a href="${fixUrl(a.file_url)}" target="_blank" download="${a.file_name}" class="btn btn-outline btn-sm"><i class="fas fa-download"></i>下載</a>
         </div>`).join('')}
       </div>` : ''}
       <div class="comments-section">
@@ -1678,7 +1698,8 @@ async function submitPost() {
   for (const file of pendingImages) {
     try {
       const blob = await convertToWebP(file);
-      const fname = file.name.replace(/\.[^.]+$/, '.webp');
+      const rawFname = file.name.replace(/\.[^.]+$/, '.webp');
+      const fname = rawFname.replace(/[^\x00-\x7F]/g, c => encodeURIComponent(c).replace(/%/g,'_')).replace(/[^a-zA-Z0-9._\-]/g,'_');
       const path  = `${post.id}/${Date.now()}_${fname}`;
       const { data: up } = await authStorageUpload(path, blob, 'image/webp');
       if (up) {
@@ -1690,7 +1711,8 @@ async function submitPost() {
   }
   for (const file of pendingFiles) {
     try {
-      const path = `${post.id}/${Date.now()}_${file.name}`;
+      const safeName = file.name.replace(/[^\x00-\x7F]/g, c => encodeURIComponent(c).replace(/%/g,'_')).replace(/[^a-zA-Z0-9._\-]/g,'_');
+      const path = `${post.id}/${Date.now()}_${safeName}`;
       const { data: up } = await authStorageUpload(path, file, file.type);
       if (up) {
         const { error: insErr2 } = await db.from('attachments').insert({ post_id: post.id, file_name: file.name, file_url: up.publicUrl, file_type: file.type, file_size: file.size, is_webp: false });
@@ -1987,7 +2009,9 @@ async function saveAndResubmit() {
   if (error) { toast('提交失敗：' + error.message, 'error'); return; }
   for (const file of _editPendingImages) {
     try {
-      const blob = await convertToWebP(file); const fname = file.name.replace(/\.[^.]+$/,'.webp');
+      const blob = await convertToWebP(file);
+      const rawFname = file.name.replace(/\.[^.]+$/,'.webp');
+      const fname = rawFname.replace(/[^\x00-\x7F]/g, c => encodeURIComponent(c).replace(/%/g,'_')).replace(/[^a-zA-Z0-9._\-]/g,'_');
       const path = `${_editingPostId}/${Date.now()}_${fname}`;
       const { data: up } = await authStorageUpload(path, blob, 'image/webp');
       if (up) await db.from('attachments').insert({ post_id:_editingPostId, file_name:fname, file_url:up.publicUrl, file_type:'image/webp', file_size:blob.size, is_webp:true });
@@ -1995,7 +2019,8 @@ async function saveAndResubmit() {
   }
   for (const file of _editPendingFiles) {
     try {
-      const path = `${_editingPostId}/${Date.now()}_${file.name}`;
+      const eSafeName = file.name.replace(/[^\x00-\x7F]/g, c => encodeURIComponent(c).replace(/%/g,'_')).replace(/[^a-zA-Z0-9._\-]/g,'_');
+      const path = `${_editingPostId}/${Date.now()}_${eSafeName}`;
       const { data: up } = await authStorageUpload(path, file, file.type);
       if (up) await db.from('attachments').insert({ post_id:_editingPostId, file_name:file.name, file_url:up.publicUrl, file_type:file.type, file_size:file.size, is_webp:false });
     } catch(e) { console.warn(e); }
