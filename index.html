@@ -1450,12 +1450,13 @@ function showConfirm(icon, title, msg, btnLabel, btnClass, cb) {
 }
 function closeConfirm() { document.getElementById('confirmOverlay').classList.remove('show'); _confirmCb = null; }
 function doConfirm() {
-  closeConfirm();
-  if (!_confirmCb) { console.error('doConfirm: no callback'); return; }
+  const cb = _confirmCb;  // 先儲存 callback
+  closeConfirm();          // 再關閉（這會把 _confirmCb 設為 null）
+  if (!cb) { console.error('doConfirm: no callback'); return; }
   try {
-    const result = _confirmCb();
+    const result = cb();
     if (result && typeof result.catch === 'function') {
-      result.catch(e => { console.error('doConfirm callback error:', e); toast('執行失敗：' + e.message, 'error'); });
+      result.catch(e => { console.error('doConfirm error:', e); toast('執行失敗：' + e.message, 'error'); });
     }
   } catch(e) {
     console.error('doConfirm sync error:', e);
