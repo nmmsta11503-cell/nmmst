@@ -10,7 +10,6 @@
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 :root{
-  --fs:1rem;
   --bg:#0f0e0d;--bg2:#1a1916;--bg3:#252320;--bg4:#2e2c29;
   --gold:#c9a84c;--gold2:#e8c97a;--gold3:#f5e4b0;
   --text:#f0ede6;--text2:#b8b4aa;--text3:#7a7670;
@@ -18,7 +17,7 @@
   --red:#c0392b;--green:#27ae60;--blue:#2980b9;
   --radius:8px;--radius2:14px;
 }
-body{font-family:'Noto Sans TC',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;font-size:var(--fs)}
+body{font-family:'Noto Sans TC',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;font-size:1rem}
 /* ── 淺色模式 ── */
 [data-theme=light]{
   --bg:#f5f2ec;--bg2:#ffffff;--bg3:#f0ece3;--bg4:#e5dfd3;
@@ -76,21 +75,29 @@ h1,h2,h3{font-family:'Noto Serif TC',serif}
 .app{display:flex;flex-direction:column;min-height:100vh}
 
 /* HEADER */
-.header{background:var(--bg2);border-bottom:1px solid var(--border);padding:0 1.5rem;display:flex;align-items:center;gap:1.5rem;height:60px;position:sticky;top:0;z-index:100}
-.logo{display:flex;align-items:center;gap:10px;cursor:pointer;text-decoration:none;flex-shrink:0}
-.logo-img{height:36px;width:auto;object-fit:contain;display:block}
-.logo-divider{width:1px;height:26px;background:var(--border2);flex-shrink:0}
-.logo-text-wrap{display:flex;flex-direction:column;justify-content:center}
-.logo-text{font-family:'Noto Serif TC',serif;font-size:.9rem;font-weight:700;color:var(--gold2);letter-spacing:1px;white-space:nowrap;line-height:1.3}
-.logo-sub{font-size:9px;color:var(--text3);letter-spacing:.5px;line-height:1}
-.nav{display:flex;gap:4px;align-items:center;flex:1;justify-content:center}
-.nav-btn{background:none;border:none;color:var(--text2);cursor:pointer;padding:6px 14px;border-radius:var(--radius);font-size:13px;font-family:'Noto Sans TC',sans-serif;transition:all .2s;display:flex;align-items:center;gap:6px;white-space:nowrap;line-height:1}
+.header{background:var(--bg2);border-bottom:1px solid var(--border);padding:0 1rem;display:flex;align-items:center;gap:1rem;height:56px;position:sticky;top:0;z-index:100;overflow:hidden}
+.logo{display:flex;align-items:center;gap:8px;cursor:pointer;text-decoration:none;flex-shrink:0;min-width:0}
+.logo-img{height:32px;width:auto;object-fit:contain;display:block;flex-shrink:0;max-width:100px}
+.logo-divider{width:1px;height:22px;background:var(--border2);flex-shrink:0}
+.logo-text-wrap{display:flex;flex-direction:column;justify-content:center;min-width:0}
+.logo-text{font-family:'Noto Serif TC',serif;font-size:.85rem;font-weight:700;color:var(--gold2);letter-spacing:.5px;white-space:nowrap;line-height:1.3}
+.logo-sub{font-size:9px;color:var(--text3);letter-spacing:.5px;line-height:1;white-space:nowrap}
+.nav{display:flex;gap:2px;align-items:center;flex:1;justify-content:center;min-width:0}
+.nav-btn{background:none;border:none;color:var(--text2);cursor:pointer;padding:5px 10px;border-radius:var(--radius);font-size:13px;font-family:'Noto Sans TC',sans-serif;transition:all .2s;display:flex;align-items:center;gap:5px;white-space:nowrap;line-height:1;flex-shrink:0}
 .nav-btn:hover{background:var(--bg3);color:var(--text)}
 .nav-btn.active{background:var(--bg3);color:var(--gold2)}
-.nav-btn i{font-size:13px}
+.nav-btn i{font-size:12px}
 .pending-badge{background:var(--gold);color:#0f0e0d;font-size:10px;padding:1px 5px;border-radius:8px;margin-left:2px;font-weight:700}
-.user-area{display:flex;align-items:center;gap:8px;flex-shrink:0}
-.avatar{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,var(--gold),#8b6914);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#0f0e0d;cursor:pointer;border:2px solid var(--gold);flex-shrink:0}
+.user-area{display:flex;align-items:center;gap:6px;flex-shrink:0}
+.avatar{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--gold),#8b6914);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#0f0e0d;cursor:pointer;border:2px solid var(--gold);flex-shrink:0;overflow:hidden}
+@media(max-width:640px){
+  .logo-text-wrap{display:none}
+  .logo-divider{display:none}
+  .nav-btn span{display:none}
+  .nav-btn{padding:5px 8px}
+  .btn .btn-text{display:none}
+  .header{gap:.5rem;padding:0 .75rem}
+}
 .btn{padding:7px 18px;border-radius:var(--radius);font-size:13px;font-family:'Noto Sans TC',sans-serif;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:6px;border:none}
 .btn-primary{background:var(--gold);color:#0f0e0d;font-weight:700}
 .btn-primary:hover{background:var(--gold2)}
@@ -396,12 +403,7 @@ h1,h2,h3{font-family:'Noto Serif TC',serif}
   <div class="user-area" id="userArea">
     <button class="btn btn-outline" onclick="nav('login')"><i class="fas fa-right-to-bracket"></i>登入</button>
   </div>
-  <div class="font-size-picker" title="字型大小">
-    <button class="fs-btn fs-s" onclick="setFontSize('s')" id="fsS" title="小">A</button>
-    <button class="fs-btn fs-m active" onclick="setFontSize('m')" id="fsM" title="中">A</button>
-    <button class="fs-btn fs-l" onclick="setFontSize('l')" id="fsL" title="大">A</button>
-  </div>
-  <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" title="切換深/淺色模式" style="flex-shrink:0">
+<button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" title="切換深/淺色模式" style="flex-shrink:0">
     <i class="fas fa-moon" id="themeIcon"></i>
   </button>
 </header>
@@ -631,7 +633,7 @@ h1,h2,h3{font-family:'Noto Serif TC',serif}
       </div>
       <div class="form-group">
         <label class="form-label">電子郵件</label>
-        <input type="email" class="form-input" id="loginEmail" placeholder="yourname@mail.nmmst.gov.tw" autocomplete="email">
+        <input type="email" class="form-input" id="loginEmail" placeholder="yourname@nmmst.gov.tw" autocomplete="email">
       </div>
       <div class="form-group">
         <label class="form-label">密碼</label>
@@ -700,6 +702,21 @@ async function getAuthDb() {
     }
   });
   return _authDb;
+}
+
+// =============================================
+// UTILS
+// =============================================
+function fmtDateTime(s) {
+  if (!s) return '';
+  return new Date(s).toLocaleString('zh-TW', {
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
+  });
+}
+function fmtDate(s) {
+  if (!s) return '';
+  return new Date(s).toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit' });
 }
 
 // =============================================
@@ -873,7 +890,7 @@ function nav(page) {
 async function loadPosts() {
   const grid = document.getElementById('cardsGrid');
   grid.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i>載入中...</div>';
-  let q = db.from('posts').select('*, profiles(name)').eq('status', 'approved');
+  let q = db.from('posts').select('*, profiles(name), attachments(file_url,is_webp,file_type)').eq('status', 'approved');
   if (currentTag !== '全部') q = q.contains('tags', [currentTag]);
   if (currentSort === 'views')     q = q.order('view_count',     { ascending: false });
   else if (currentSort === 'likes')     q = q.order('like_count',     { ascending: false });
@@ -911,6 +928,7 @@ function renderCards() {
         ${(p.tags || []).slice(0, 2).map(t => `<span class="tag">${t}</span>`).join('')}
       </div>
       <div class="card-title">${p.title}</div>
+      ${(() => { const img = (p.attachments||[]).find(a => a.is_webp || a.file_type?.startsWith('image')); return img ? `<img src="${img.file_url}" style="width:100%;border-radius:var(--radius);margin-bottom:8px;max-height:180px;object-fit:cover" loading="lazy">` : ''; })()}
       <div class="card-excerpt">${(p.prompt || '').slice(0, 80)}${(p.prompt || '').length > 80 ? '…' : ''}</div>
       <div class="pop-bar-wrap">
         <i class="fas fa-fire" style="font-size:10px;color:var(--gold)"></i>
@@ -945,7 +963,7 @@ async function openPost(id) {
   // fetch full post
   const { data: p } = await db.from('posts').select('*, profiles(name), attachments(*)').eq('id', id).single();
   if (!p) return;
-  const { data: comments } = await db.from('comments').select('*, profiles(name)').eq('post_id', id).order('created_at');
+  const { data: comments } = await db.from('comments').select('*, profiles(name, avatar_url, role)').eq('post_id', id).order('created_at');
 
   const name = p.profiles?.name || '館員';
   const initial = name.slice(0, 1);
@@ -980,12 +998,25 @@ async function openPost(id) {
       <div class="comments-title">💬 討論（${(comments||[]).length}）</div>
       <div id="commentList">
         ${(comments||[]).length === 0 ? '<div style="font-size:.82rem;color:var(--text3);margin-bottom:.8rem">尚無留言，搶先留言吧！</div>' :
-          (comments||[]).map(c => `
-          <div class="comment-item">
-            <div class="comment-author">${c.profiles?.name || '館員'}</div>
-            <div class="comment-text">${c.content}</div>
-            <div class="comment-time">${new Date(c.created_at).toLocaleDateString('zh-TW')}</div>
-          </div>`).join('')}
+          (comments||[]).map(c => {
+            const cName = c.profiles?.name || '館員';
+            const cAvatar = c.profiles?.avatar_url;
+            const cAvatarStyle = cAvatar?.startsWith('preset:')
+              ? AVATAR_PRESETS[parseInt(cAvatar.replace('preset:',''))]?.bg || AVATAR_PRESETS[0].bg
+              : 'linear-gradient(135deg,var(--gold),#8b6914)';
+            const cAvatarContent = cAvatar?.startsWith('http')
+              ? `<img src="${cAvatar}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`
+              : cName.slice(0,1);
+            return `
+          <div class="comment-item" style="display:flex;gap:10px;align-items:flex-start">
+            <div class="avatar" style="width:30px;height:30px;font-size:11px;flex-shrink:0;background:${cAvatarStyle};border:1px solid var(--border)">${cAvatarContent}</div>
+            <div style="flex:1;min-width:0">
+              <div class="comment-author">${cName}</div>
+              <div class="comment-text">${c.content}</div>
+              <div class="comment-time">${fmtDateTime(c.created_at)}</div>
+            </div>
+          </div>`;
+          }).join('')}
       </div>
       ${currentUser ? `<div class="comment-input-row">
         <input id="commentInput" class="comment-input" type="text" placeholder="留下你的想法..." onkeydown="if(event.key==='Enter')submitComment('${p.id}')">
@@ -1079,7 +1110,7 @@ async function submitComment(postId) {
     list.innerHTML += `<div class="comment-item">
       <div class="comment-author">${data.profiles?.name || '館員'}</div>
       <div class="comment-text">${content}</div>
-      <div class="comment-time">剛剛</div>
+      <div class="comment-time">${fmtDateTime(new Date().toISOString())}</div>
     </div>`;
   }
   input.value = '';
@@ -1121,7 +1152,7 @@ async function loadRank() {
       <div class="lb-rank ${i < 3 ? 'r' + (i + 1) : ''}">${i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : i + 1}</div>
       <div class="lb-content">
         <div class="lb-title">${p.title}</div>
-        <div class="lb-author">${p.profiles?.name || '館員'} · ${p.tool || ''} · ${p.category || ''}</div>
+        <div class="lb-author">${p.profiles?.name || '館員'}${p.tool ? ' · ' + p.tool : ''}${p.tags?.[0] ? ' · ' + p.tags[0] : ''}</div>
       </div>
       <div class="lb-views">
         <div class="lb-views-num">${(p.view_count || 0).toLocaleString()}</div>
@@ -1149,7 +1180,7 @@ async function loadAdminPosts() {
         <div class="admin-card-title">${p.title}</div>
         <span class="status-badge ${p.status === 'pending' ? 'status-pending' : p.status === 'approved' ? 'status-approved' : 'status-rejected'}">${p.status === 'pending' ? '待審核' : p.status === 'approved' ? '已上架' : '已拒絕'}</span>
       </div>
-      <div class="admin-card-meta">${p.profiles?.name || '館員'} · ${p.tool || ''} · ${new Date(p.created_at).toLocaleDateString('zh-TW')}</div>
+      <div class="admin-card-meta">${p.profiles?.name || '館員'}${p.tool ? ' · ' + p.tool : ''} · ${new Date(p.created_at).toLocaleDateString('zh-TW')}</div>
       ${flags.length ? `<div class="sensitive-flag"><i class="fas fa-triangle-exclamation"></i>偵測到敏感詞：${flags.join('、')}</div>` : ''}
       <div class="admin-card-excerpt">${(p.prompt || '').slice(0, 150)}${(p.prompt || '').length > 150 ? '…' : ''}</div>
       <div class="admin-actions">
@@ -1509,7 +1540,6 @@ async function renderProfile() {
         <div class="card" onclick="openPost('${p.id}')">
           <div class="card-tags">
             ${p.tool ? `<span class="tag ai">${p.tool}</span>` : ''}
-            <span class="tag">${p.category || ''}</span>
             <span class="status-badge ${p.status === 'pending' ? 'status-pending' : p.status === 'approved' ? 'status-approved' : 'status-rejected'}" style="margin-left:auto">${p.status === 'pending' ? '審核中' : p.status === 'approved' ? '已上架' : '已拒絕'}</span>
           </div>
           <div class="card-title">${p.title}</div>
@@ -1518,8 +1548,17 @@ async function renderProfile() {
               <span class="card-stat"><i class="fas fa-eye" style="font-size:11px"></i>${p.view_count || 0}</span>
               <span class="card-stat"><i class="fas fa-heart" style="font-size:11px"></i>${p.like_count || 0}</span>
             </div>
+            ${p.status === 'rejected' ? `<button class="btn btn-outline btn-sm" style="margin-left:auto;font-size:11px;padding:3px 8px" onclick="event.stopPropagation();resubmitPost('${p.id}')"><i class="fas fa-rotate-right"></i> 重新提交</button>` : ''}
           </div>
         </div>`).join('')}</div>`}`;
+}
+
+async function resubmitPost(id) {
+  const adb = await getAuthDb();
+  const { error } = await adb.from('posts').update({ status: 'pending', sensitive_flags: [] }).eq('id', id);
+  if (error) { toast('操作失敗：' + error.message, 'error'); return; }
+  toast('已重新提交，等待審核 ✓', 'success');
+  renderProfile();
 }
 
 function toggleEditPanel() {
@@ -1637,12 +1676,13 @@ async function uploadAvatarImage(file) {
   } catch(e) { /* use original */ }
 
   const path = `avatars/${currentUser.id}_${Date.now()}.webp`;
-  const { data, error } = await db.storage.from('attachments').upload(path, blob, {
+  const adbA = await getAuthDb();
+  const { data, error } = await adbA.storage.from('attachments').upload(path, blob, {
     contentType: 'image/webp', upsert: true
   });
   if (error) { toast('上傳失敗：' + error.message, 'error'); return; }
 
-  const { data: pub } = db.storage.from('attachments').getPublicUrl(path);
+  const { data: pub } = adbA.storage.from('attachments').getPublicUrl(path);
   window._pendingAvatarUrl = pub.publicUrl;
 
   // Update preview
@@ -1674,8 +1714,23 @@ async function saveProfile() {
 
   toast('個人資料已更新 ✓', 'success');
 
-  // Refresh UI
+  // 同步更新右上角 avatar
   updateUserUI();
+  // 更新右上角 avatar 顯示
+  const headerAvatar = document.querySelector('.user-area .avatar');
+  if (headerAvatar) {
+    if (currentProfile.avatar_url?.startsWith('http')) {
+      headerAvatar.innerHTML = `<img src="${currentProfile.avatar_url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
+      headerAvatar.style.background = 'none';
+    } else if (currentProfile.avatar_url?.startsWith('preset:')) {
+      const idx = parseInt(currentProfile.avatar_url.replace('preset:',''));
+      headerAvatar.style.background = AVATAR_PRESETS[idx]?.bg || AVATAR_PRESETS[0].bg;
+      headerAvatar.innerHTML = (currentProfile.name || '').slice(0,1);
+    } else {
+      headerAvatar.style.background = 'linear-gradient(135deg,var(--gold),#8b6914)';
+      headerAvatar.innerHTML = (currentProfile.name || '').slice(0,1);
+    }
+  }
   renderProfile();
 }
 
@@ -1713,24 +1768,6 @@ function getSelectedTool() {
     return custom || '其他';
   }
   return sel;
-}
-
-// =============================================
-// FONT SIZE
-// =============================================
-const FS_MAP = { s: '0.875rem', m: '1rem', l: '1.175rem' };
-
-function setFontSize(size) {
-  document.documentElement.style.setProperty('--fs', FS_MAP[size]);
-  localStorage.setItem('fontSize', size);
-  ['s','m','l'].forEach(s => {
-    document.getElementById('fs' + s.toUpperCase())?.classList.toggle('active', s === size);
-  });
-}
-
-function initFontSize() {
-  const saved = localStorage.getItem('fontSize') || 'm';
-  setFontSize(saved);
 }
 
 // =============================================
@@ -1779,7 +1816,6 @@ window.addEventListener('scroll', () => {
 
 document.addEventListener('DOMContentLoaded', async () => {
   initTheme();
-  initFontSize();
   await initAuth();
   loadPosts();
 });
