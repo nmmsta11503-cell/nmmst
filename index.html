@@ -90,13 +90,27 @@ h1,h2,h3{font-family:'Noto Serif TC',serif}
 .pending-badge{background:var(--gold);color:#0f0e0d;font-size:10px;padding:1px 5px;border-radius:8px;margin-left:2px;font-weight:700}
 .user-area{display:flex;align-items:center;gap:6px;flex-shrink:0}
 .avatar{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--gold),#8b6914);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#0f0e0d;cursor:pointer;border:2px solid var(--gold);flex-shrink:0;overflow:hidden}
+/* 漢堡選單 */
+.hamburger{display:none;flex-direction:column;justify-content:center;gap:5px;width:36px;height:36px;background:none;border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;padding:6px;flex-shrink:0}
+.hamburger span{display:block;height:2px;background:var(--text2);border-radius:2px;transition:all .25s}
+.hamburger.open span:nth-child(1){transform:translateY(7px) rotate(45deg)}
+.hamburger.open span:nth-child(2){opacity:0;transform:scaleX(0)}
+.hamburger.open span:nth-child(3){transform:translateY(-7px) rotate(-45deg)}
+.mobile-menu{display:none;position:fixed;top:72px;left:0;right:0;z-index:99;
+  background:var(--bg2);border-bottom:1px solid var(--border);
+  flex-direction:column;padding:.5rem .75rem .75rem;gap:4px;
+  box-shadow:0 8px 24px rgba(0,0,0,.3)}
+.mobile-menu.open{display:flex}
+.mobile-menu .nav-btn{justify-content:flex-start;padding:10px 12px;font-size:14px;width:100%}
+.mobile-menu .nav-btn i{width:20px}
 @media(max-width:640px){
   .logo-text-wrap{display:none}
   .logo-divider{display:none}
-  .nav-btn span{display:none}
-  .nav-btn{padding:5px 8px}
-  .btn .btn-text{display:none}
-  .header{gap:.5rem;padding:0 .75rem}
+  .nav{display:none}
+  .hamburger{display:flex}
+  .header{gap:.75rem;padding:0 .75rem}
+  .user-area .btn span{display:none}
+  .user-area .btn{padding:7px 10px}
 }
 .btn{padding:7px 18px;border-radius:var(--radius);font-size:13px;font-family:'Noto Sans TC',sans-serif;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:6px;border:none}
 .btn-primary{background:var(--gold);color:#0f0e0d;font-weight:700}
@@ -830,28 +844,30 @@ async function getAuthDb() {
 }
 
 // =============================================
-// AI LINKS MANAGEMENT
+// AI LINKS MANAGEMENT（Supabase 後端）
 // =============================================
-const DEFAULT_AI_LINKS = [
-  { name: 'ChatGPT',  url: 'https://chatgpt.com',      logo: 'https://upload.wikimedia.org/wikipedia/commons/0/04/ChatGPT_logo.svg' },
-  { name: 'Meta AI',  url: 'https://www.meta.ai',       logo: '' },
-  { name: 'Gemini',   url: 'https://gemini.google.com', logo: 'https://upload.wikimedia.org/wikipedia/commons/8/8a/Google_Gemini_logo.svg' },
-  { name: 'Claude',   url: 'https://claude.ai',         logo: '' },
-];
+let _aiLinksCache = null;
 
-function loadAiLinks() {
-  const saved = localStorage.getItem('aiLinks');
-  return saved ? JSON.parse(saved) : DEFAULT_AI_LINKS;
+async function loadAiLinks() {
+  const { data } = await db.from('ai_links').select('*').order('sort_order');
+  _aiLinksCache = data || [];
+  return _aiLinksCache;
 }
 
-function saveAiLinks(links) {
-  localStorage.setItem('aiLinks', JSON.stringify(links));
+async function saveAiLinks(links) {
+  // 重新寫入 sort_order
+  for (let i = 0; i < links.length; i++) {
+    if (links[i].id) {
+      await authPatch('ai_links', `id=eq.${links[i].id}`, { sort_order: i + 1 });
+    }
+  }
+  _aiLinksCache = links;
 }
 
-function renderAiLinks() {
+async function renderAiLinks() {
   const container = document.getElementById('aiLinksContainer');
   if (!container) return;
-  const links = loadAiLinks();
+  const links = await loadAiLinks();
   const isAdmin = currentProfile?.role === 'admin';
   container.innerHTML = links.map((l, i) => `
     <a class="ai-link" href="${l.url}" target="_blank" rel="noopener" onclick="event.stopPropagation()">
@@ -860,22 +876,19 @@ function renderAiLinks() {
         : `<span style="width:20px;height:20px;border-radius:4px;background:linear-gradient(135deg,var(--gold),#8b6914);display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#0f0e0d;flex-shrink:0">${l.name.slice(0,1)}</span>`
       }
       <span>${l.name}</span>
-      ${isAdmin ? `<button class="rm-ai" onclick="event.preventDefault();event.stopPropagation();removeAiLink(${i})" title="移除"><i class="fas fa-xmark"></i></button>` : ''}
+      ${isAdmin ? `<button class="rm-ai" onclick="event.preventDefault();event.stopPropagation();removeAiLink('${l.id}')" title="移除"><i class="fas fa-xmark"></i></button>` : ''}
     </a>`).join('') +
     (isAdmin ? `<button class="ai-link-manage-btn" onclick="openAiMgr()"><i class="fas fa-plus"></i> 新增</button>` : '');
 }
 
-function removeAiLink(idx) {
-  const links = loadAiLinks();
-  links.splice(idx, 1);
-  saveAiLinks(links);
-  renderAiLinks();
+async function removeAiLink(id) {
+  await authDelete('ai_links', `id=eq.${id}`);
+  await renderAiLinks();
 }
 
-function openAiMgr() {
-  const modal = document.getElementById('aiMgrModal');
-  modal.classList.add('show');
-  renderAiMgrList();
+async function openAiMgr() {
+  document.getElementById('aiMgrModal').classList.add('show');
+  await renderAiMgrList();
 }
 
 function renderAiMgrList() {
@@ -913,15 +926,15 @@ function aiDragStart(e, i) {
   e.currentTarget.style.opacity = '.4';
 }
 function aiDragOver(e) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; }
-function aiDrop(e, i) {
+async function aiDrop(e, i) {
   e.preventDefault();
   if (_aiDragFrom === null || _aiDragFrom === i) return;
-  const links = loadAiLinks();
+  const links = _aiLinksCache ? [..._aiLinksCache] : await loadAiLinks();
   const moved = links.splice(_aiDragFrom, 1)[0];
   links.splice(i, 0, moved);
-  saveAiLinks(links);
-  renderAiLinks();
-  renderAiMgrList();
+  await saveAiLinks(links);
+  await renderAiLinks();
+  await renderAiMgrList();
   _aiDragFrom = null;
 }
 function aiDragEnd() {
@@ -954,19 +967,18 @@ function previewAiLogoUrl(url) {
   }
 }
 
-function addAiLink() {
+async function addAiLink() {
   const name = document.getElementById('aiNewName').value.trim();
   const url  = document.getElementById('aiNewUrl').value.trim();
   const logoUrl = document.getElementById('aiNewLogoUrl').value.trim();
-  const logo = _aiNewLogoDataUrl || logoUrl;
+  const logo = _aiNewLogoDataUrl || logoUrl || '';
   if (!name || !url) { toast('請填寫名稱和網址', 'error'); return; }
   if (!url.startsWith('http')) { toast('網址請以 https:// 開頭', 'error'); return; }
-  const links = loadAiLinks();
-  links.push({ name, url, logo });
-  saveAiLinks(links);
-  renderAiLinks();
-  renderAiMgrList();
-  // reset
+  const maxOrder = (_aiLinksCache || []).reduce((m, l) => Math.max(m, l.sort_order || 0), 0);
+  const { error } = await authPost('ai_links', { name, url, logo, sort_order: maxOrder + 1 });
+  if (error) { toast('新增失敗：' + (error.message || ''), 'error'); return; }
+  await renderAiLinks();
+  await renderAiMgrList();
   document.getElementById('aiNewName').value = '';
   document.getElementById('aiNewUrl').value = '';
   document.getElementById('aiNewLogoUrl').value = '';
@@ -1101,6 +1113,7 @@ function updateUserUI() {
       </div>`;
     if (currentProfile.role === 'admin') {
       adminNav.style.display = '';
+      document.getElementById('mnav-admin').style.display = '';
       loadPendingCount();
     }
   } else {
@@ -1113,8 +1126,10 @@ function updateUserUI() {
 async function loadPendingCount() {
   const { count } = await db.from('posts').select('id', { count: 'exact' }).eq('status', 'pending');
   const badge = document.getElementById('pendingBadge');
+  const mbadge = document.getElementById('mPendingBadge');
   const ct = document.getElementById('pendingCount');
   if (badge) { badge.textContent = count || 0; badge.style.display = count > 0 ? '' : 'none'; }
+  if (mbadge) { mbadge.textContent = count || 0; mbadge.style.display = count > 0 ? '' : 'none'; }
   if (ct) ct.textContent = count || 0;
 }
 
@@ -2195,6 +2210,26 @@ function getSelectedTool() {
   }
   return sel;
 }
+
+// =============================================
+// HAMBURGER MENU
+// =============================================
+function toggleMobileMenu() {
+  const menu = document.getElementById('mobileMenu');
+  const btn  = document.getElementById('hamburger');
+  const open = menu.classList.toggle('open');
+  btn.classList.toggle('open', open);
+}
+function closeMobileMenu() {
+  document.getElementById('mobileMenu')?.classList.remove('open');
+  document.getElementById('hamburger')?.classList.remove('open');
+}
+// 關閉：點選單外部
+document.addEventListener('click', e => {
+  if (!e.target.closest('#mobileMenu') && !e.target.closest('#hamburger')) {
+    closeMobileMenu();
+  }
+});
 
 // =============================================
 // THEME TOGGLE
