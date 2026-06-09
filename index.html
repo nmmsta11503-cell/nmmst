@@ -75,9 +75,9 @@ h1,h2,h3{font-family:'Noto Serif TC',serif}
 .app{display:flex;flex-direction:column;min-height:100vh}
 
 /* HEADER */
-.header{background:var(--bg2);border-bottom:1px solid var(--border);padding:0 1rem;display:flex;align-items:center;gap:1rem;height:56px;position:sticky;top:0;z-index:100;overflow:hidden}
+.header{background:var(--bg2);border-bottom:1px solid var(--border);padding:0 1rem;display:flex;align-items:center;gap:1rem;height:64px;position:sticky;top:0;z-index:100;overflow:hidden}
 .logo{display:flex;align-items:center;gap:8px;cursor:pointer;text-decoration:none;flex-shrink:0;min-width:0}
-.logo-img{height:32px;width:auto;object-fit:contain;display:block;flex-shrink:0;max-width:100px}
+.logo-img{height:44px;width:auto;object-fit:contain;display:block;flex-shrink:0;max-width:140px}
 .logo-divider{width:1px;height:22px;background:var(--border2);flex-shrink:0}
 .logo-text-wrap{display:flex;flex-direction:column;justify-content:center;min-width:0}
 .logo-text{font-family:'Noto Serif TC',serif;font-size:.85rem;font-weight:700;color:var(--gold2);letter-spacing:.5px;white-space:nowrap;line-height:1.3}
@@ -118,7 +118,17 @@ h1,h2,h3{font-family:'Noto Serif TC',serif}
 .hero p{color:var(--text2);font-size:1rem;line-height:1.8}
 
 /* AI 工具連結 */
-.ai-links{display:flex;justify-content:center;gap:12px;margin-top:1.5rem;flex-wrap:wrap}
+.ai-links{display:flex;justify-content:center;gap:12px;margin-top:1.5rem;flex-wrap:wrap;align-items:center}
+.ai-link-manage-btn{display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:20px;background:transparent;border:1px dashed var(--border2);color:var(--text3);font-size:12px;cursor:pointer;font-family:"Noto Sans TC",sans-serif;transition:all .2s}
+.ai-link-manage-btn:hover{border-color:var(--gold);color:var(--gold)}
+.ai-link .rm-ai{display:none;position:absolute;top:-6px;right:-6px;width:16px;height:16px;border-radius:50%;background:var(--red);color:#fff;font-size:9px;align-items:center;justify-content:center;cursor:pointer;border:none;line-height:1}
+.ai-link:hover .rm-ai{display:flex}
+.ai-link{position:relative}
+/* 管理 modal */
+.ai-mgr-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)}
+.ai-mgr-row:last-child{border-bottom:none}
+.ai-mgr-logo{width:32px;height:32px;border-radius:8px;object-fit:contain;background:var(--bg3);padding:4px;flex-shrink:0}
+.ai-mgr-logo-placeholder{width:32px;height:32px;border-radius:8px;background:var(--bg3);display:flex;align-items:center;justify-content:center;font-size:14px;color:var(--text3);flex-shrink:0}
 .ai-link{display:flex;align-items:center;gap:8px;padding:8px 18px;border-radius:20px;background:var(--bg2);border:1px solid var(--border);color:var(--text2);text-decoration:none;font-size:13px;font-weight:500;transition:all .2s}
 .ai-link:hover{border-color:var(--gold);color:var(--gold);transform:translateY(-2px);box-shadow:0 4px 12px rgba(0,0,0,.2)}
 .ai-link img{width:20px;height:20px;object-fit:contain}
@@ -319,8 +329,8 @@ h1,h2,h3{font-family:'Noto Serif TC',serif}
 .login-logo p{font-size:.8rem;color:var(--text3);margin-top:4px}
 
 /* PROFILE DROPDOWN */
-.dropdown{position:relative}
-.dropdown-menu{display:none;position:absolute;top:100%;right:0;margin-top:8px;background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius2);padding:.4rem;min-width:180px;z-index:300}
+.dropdown{position:static}
+.dropdown-menu{display:none;position:fixed;top:68px;right:.75rem;margin-top:0;background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius2);padding:.4rem;min-width:180px;z-index:300;box-shadow:0 8px 24px rgba(0,0,0,.4)}
 .dropdown.open .dropdown-menu{display:block}
 .dropdown-item{display:flex;align-items:center;gap:8px;padding:7px 12px;border-radius:6px;font-size:13px;color:var(--text2);cursor:pointer;transition:all .2s;background:none;border:none;width:100%;text-align:left;font-family:'Noto Sans TC',sans-serif}
 .dropdown-item:hover{background:var(--bg3);color:var(--text)}
@@ -388,7 +398,7 @@ h1,h2,h3{font-family:'Noto Serif TC',serif}
 <header class="header">
   <div class="logo" onclick="nav('home')">
     <img class="logo-img" src="img/logo.png" alt="NMMST" onerror="this.style.display='none';document.getElementById('logo-fallback').style.display='flex'">
-    <div id="logo-fallback" style="display:none;width:36px;height:36px;background:linear-gradient(135deg,var(--gold),var(--gold2));border-radius:8px;align-items:center;justify-content:center;font-size:18px;color:#0f0e0d;flex-shrink:0"><i class="fas fa-landmark"></i></div>
+    <div id="logo-fallback" style="display:none;width:44px;height:44px;background:linear-gradient(135deg,var(--gold),var(--gold2));border-radius:8px;align-items:center;justify-content:center;font-size:18px;color:#0f0e0d;flex-shrink:0"><i class="fas fa-landmark"></i></div>
     <div class="logo-divider"></div>
     <div class="logo-text-wrap">
       <div class="logo-text">提示詞共學平台</div>
@@ -416,43 +426,7 @@ h1,h2,h3{font-family:'Noto Serif TC',serif}
     <div class="hero">
       <h1>AI 提示詞共學</h1>
       <p>館員們的 AI 探索成果，在這裡相互激盪。<br>分享你的提示詞，讓知識在博物館裡流動。</p>
-      <div class="ai-links">
-        <a class="ai-link" href="https://chatgpt.com" target="_blank" rel="noopener">
-          <img src="https://upload.wikimedia.org/wikipedia/commons/0/04/ChatGPT_logo.svg" alt="ChatGPT" width="20" height="20">
-          <span>ChatGPT</span>
-        </a>
-        <a class="ai-link" href="https://www.meta.ai" target="_blank" rel="noopener">
-          <svg width="22" height="22" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <defs>
-              <linearGradient id="mg1" x1="2" y1="18" x2="34" y2="18" gradientUnits="userSpaceOnUse">
-                <stop stop-color="#0064E0"/>
-                <stop offset="0.4" stop-color="#0064E0"/>
-                <stop offset="0.83" stop-color="#0073EE"/>
-                <stop offset="1" stop-color="#0082FB"/>
-              </linearGradient>
-              <linearGradient id="mg2" x1="18" y1="30.6" x2="18" y2="16" gradientUnits="userSpaceOnUse">
-                <stop stop-color="#0082FB"/>
-                <stop offset="1" stop-color="#0064E0"/>
-              </linearGradient>
-            </defs>
-            <path d="M18 3C9.716 3 3 9.716 3 18s6.716 15 15 15 15-6.716 15-15S26.284 3 18 3z" fill="url(#mg1)"/>
-            <path d="M11.5 18c0-2.09.7-3.87 1.84-5.04C14.49 11.77 16.1 11 18 11c1.9 0 3.51.77 4.66 1.96C23.8 14.13 24.5 15.91 24.5 18c0 2.09-.7 3.87-1.84 5.04C21.51 24.23 19.9 25 18 25c-1.9 0-3.51-.77-4.66-1.96C12.2 21.87 11.5 20.09 11.5 18z" fill="white"/>
-            <path d="M18 14c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4z" fill="url(#mg2)"/>
-          </svg>
-          <span>Meta AI</span>
-        </a>
-        <a class="ai-link" href="https://gemini.google.com" target="_blank" rel="noopener">
-          <img src="https://upload.wikimedia.org/wikipedia/commons/8/8a/Google_Gemini_logo.svg" alt="Gemini" width="20" height="20">
-          <span>Gemini</span>
-        </a>
-        <a class="ai-link" href="https://claude.ai" target="_blank" rel="noopener">
-          <svg width="20" height="20" viewBox="0 0 46 46" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect width="46" height="46" rx="10" fill="#D97757"/>
-            <path d="M30.01 13.5c-1.94 5.15-4.22 10.14-6.82 14.93l-1.12 2.02-.57-1.53c-.76-2.04-1.62-4.05-2.57-6.02l-.18-.38 1.01-1.82c1.62-2.92 3.42-5.73 5.39-8.41l.3-.41h4.56l-.01.62zM15.31 23.02c1.07 2.37 2.05 4.78 2.93 7.22l.2.57-1.35 2.44c-.41.74-.84 1.47-1.3 2.18l-.27.41H11l.03-.62c.18-4.28 1.28-8.45 3.22-12.22l.34-.65.72 2.67z" fill="white"/>
-          </svg>
-          <span>Claude</span>
-        </a>
-      </div>
+      <div class="ai-links" id="aiLinksContainer"></div>
     </div>
     <div class="filters" id="tagFilters">
       <div class="search-box">
@@ -649,6 +623,47 @@ h1,h2,h3{font-family:'Noto Serif TC',serif}
 </main>
 </div>
 
+<!-- AI LINKS MANAGE MODAL -->
+<div class="overlay" id="aiMgrModal">
+  <div class="modal" style="max-width:500px">
+    <div class="modal-header">
+      <h2><i class="fas fa-robot" style="color:var(--gold);margin-right:8px"></i>管理 AI 工具連結</h2>
+      <button class="modal-close" onclick="document.getElementById('aiMgrModal').classList.remove('show')"><i class="fas fa-xmark"></i></button>
+    </div>
+    <div class="modal-body">
+      <div id="aiMgrList"></div>
+      <div style="border-top:1px solid var(--border);margin-top:1rem;padding-top:1rem">
+        <div style="font-size:.85rem;color:var(--gold2);font-weight:600;margin-bottom:.8rem"><i class="fas fa-plus" style="margin-right:6px"></i>新增連結</div>
+        <div class="form-group">
+          <label class="form-label">名稱 <span style="color:var(--red)">*</span></label>
+          <input type="text" class="form-input" id="aiNewName" placeholder="例：Perplexity">
+        </div>
+        <div class="form-group">
+          <label class="form-label">網址 <span style="color:var(--red)">*</span></label>
+          <input type="url" class="form-input" id="aiNewUrl" placeholder="https://...">
+        </div>
+        <div class="form-group">
+          <label class="form-label">LOGO 圖片</label>
+          <div style="display:flex;gap:10px;align-items:center">
+            <div id="aiNewLogoPreview" class="ai-mgr-logo-placeholder"><i class="fas fa-image"></i></div>
+            <div style="flex:1">
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--text2)">
+                <input type="file" id="aiNewLogoFile" accept="image/*" style="display:none" onchange="previewAiLogo(this)">
+                <span class="btn btn-outline btn-sm"><i class="fas fa-upload"></i> 上傳圖片</span>
+              </label>
+              <div style="font-size:.75rem;color:var(--text3);margin-top:4px">或填入圖片網址：</div>
+              <input type="url" class="form-input" id="aiNewLogoUrl" placeholder="https://...logo.svg" style="margin-top:4px;font-size:12px" oninput="previewAiLogoUrl(this.value)">
+            </div>
+          </div>
+        </div>
+        <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="addAiLink()">
+          <i class="fas fa-plus"></i>新增
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- CARD MODAL -->
 <div class="overlay" id="cardModal">
   <div class="modal">
@@ -702,6 +717,122 @@ async function getAuthDb() {
     }
   });
   return _authDb;
+}
+
+// =============================================
+// AI LINKS MANAGEMENT
+// =============================================
+const DEFAULT_AI_LINKS = [
+  { name: 'ChatGPT',  url: 'https://chatgpt.com',      logo: 'https://upload.wikimedia.org/wikipedia/commons/0/04/ChatGPT_logo.svg' },
+  { name: 'Meta AI',  url: 'https://www.meta.ai',       logo: '' },
+  { name: 'Gemini',   url: 'https://gemini.google.com', logo: 'https://upload.wikimedia.org/wikipedia/commons/8/8a/Google_Gemini_logo.svg' },
+  { name: 'Claude',   url: 'https://claude.ai',         logo: '' },
+];
+
+function loadAiLinks() {
+  const saved = localStorage.getItem('aiLinks');
+  return saved ? JSON.parse(saved) : DEFAULT_AI_LINKS;
+}
+
+function saveAiLinks(links) {
+  localStorage.setItem('aiLinks', JSON.stringify(links));
+}
+
+function renderAiLinks() {
+  const container = document.getElementById('aiLinksContainer');
+  if (!container) return;
+  const links = loadAiLinks();
+  const isAdmin = currentProfile?.role === 'admin';
+  container.innerHTML = links.map((l, i) => `
+    <a class="ai-link" href="${l.url}" target="_blank" rel="noopener" onclick="event.stopPropagation()">
+      ${l.logo
+        ? `<img src="${l.logo}" alt="${l.name}" width="20" height="20" onerror="this.style.display='none'">`
+        : `<span style="width:20px;height:20px;border-radius:4px;background:linear-gradient(135deg,var(--gold),#8b6914);display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#0f0e0d;flex-shrink:0">${l.name.slice(0,1)}</span>`
+      }
+      <span>${l.name}</span>
+      ${isAdmin ? `<button class="rm-ai" onclick="event.preventDefault();event.stopPropagation();removeAiLink(${i})" title="移除"><i class="fas fa-xmark"></i></button>` : ''}
+    </a>`).join('') +
+    (isAdmin ? `<button class="ai-link-manage-btn" onclick="openAiMgr()"><i class="fas fa-plus"></i> 新增</button>` : '');
+}
+
+function removeAiLink(idx) {
+  const links = loadAiLinks();
+  links.splice(idx, 1);
+  saveAiLinks(links);
+  renderAiLinks();
+}
+
+function openAiMgr() {
+  const modal = document.getElementById('aiMgrModal');
+  modal.classList.add('show');
+  renderAiMgrList();
+}
+
+function renderAiMgrList() {
+  const links = loadAiLinks();
+  const el = document.getElementById('aiMgrList');
+  if (!el) return;
+  if (!links.length) { el.innerHTML = '<div style="font-size:.82rem;color:var(--text3);padding:.5rem 0">尚無連結</div>'; return; }
+  el.innerHTML = links.map((l, i) => `
+    <div class="ai-mgr-row">
+      ${l.logo
+        ? `<img class="ai-mgr-logo" src="${l.logo}" alt="${l.name}" onerror="this.style.display='none'">`
+        : `<div class="ai-mgr-logo-placeholder">${l.name.slice(0,1)}</div>`
+      }
+      <div style="flex:1;min-width:0">
+        <div style="font-size:.88rem;font-weight:600">${l.name}</div>
+        <div style="font-size:.75rem;color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${l.url}</div>
+      </div>
+      <button class="btn btn-danger btn-sm" onclick="removeAiLink(${i});renderAiMgrList()">
+        <i class="fas fa-trash"></i>
+      </button>
+    </div>`).join('');
+}
+
+let _aiNewLogoDataUrl = '';
+
+function previewAiLogo(input) {
+  if (!input.files[0]) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    _aiNewLogoDataUrl = e.target.result;
+    const preview = document.getElementById('aiNewLogoPreview');
+    if (preview) preview.innerHTML = `<img src="${e.target.result}" style="width:32px;height:32px;object-fit:contain;border-radius:8px">`;
+    document.getElementById('aiNewLogoUrl').value = '';
+  };
+  reader.readAsDataURL(input.files[0]);
+}
+
+function previewAiLogoUrl(url) {
+  _aiNewLogoDataUrl = '';
+  const preview = document.getElementById('aiNewLogoPreview');
+  if (!preview) return;
+  if (url) {
+    preview.innerHTML = `<img src="${url}" style="width:32px;height:32px;object-fit:contain;border-radius:8px" onerror="this.parentElement.innerHTML='<i class=\'fas fa-exclamation-triangle\' style=\'color:var(--red)\'></i>'">`;
+  } else {
+    preview.innerHTML = '<i class="fas fa-image"></i>';
+  }
+}
+
+function addAiLink() {
+  const name = document.getElementById('aiNewName').value.trim();
+  const url  = document.getElementById('aiNewUrl').value.trim();
+  const logoUrl = document.getElementById('aiNewLogoUrl').value.trim();
+  const logo = _aiNewLogoDataUrl || logoUrl;
+  if (!name || !url) { toast('請填寫名稱和網址', 'error'); return; }
+  if (!url.startsWith('http')) { toast('網址請以 https:// 開頭', 'error'); return; }
+  const links = loadAiLinks();
+  links.push({ name, url, logo });
+  saveAiLinks(links);
+  renderAiLinks();
+  renderAiMgrList();
+  // reset
+  document.getElementById('aiNewName').value = '';
+  document.getElementById('aiNewUrl').value = '';
+  document.getElementById('aiNewLogoUrl').value = '';
+  document.getElementById('aiNewLogoPreview').innerHTML = '<i class="fas fa-image"></i>';
+  _aiNewLogoDataUrl = '';
+  toast(`已新增 ${name}`, 'success');
 }
 
 // =============================================
@@ -807,6 +938,7 @@ async function onLogin(user) {
 function onLogout() {
   currentUser = null; currentProfile = null; likedPostIds = new Set(); bookmarkedPostIds = new Set();
   updateUserUI();
+  renderAiLinks();
   nav('home');
 }
 
@@ -1818,6 +1950,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   initTheme();
   await initAuth();
   loadPosts();
+  renderAiLinks();
 });
 </script>
 </body>
