@@ -329,6 +329,17 @@ h1,h2,h3{font-family:'Noto Serif TC',serif}
 .lightbox-counter{color:rgba(255,255,255,.6);font-size:13px;margin-top:12px}
 .lightbox-prev:disabled,.lightbox-next:disabled{opacity:.2;cursor:default}
 
+/* 審核開關 */
+.review-toggle-wrap{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:1.25rem}
+.review-toggle-wrap .label{flex:1;font-size:.88rem;color:var(--text2)}
+.review-toggle-wrap .hint{font-size:.78rem;color:var(--text3);margin-top:2px}
+.toggle-switch{position:relative;width:44px;height:24px;flex-shrink:0}
+.toggle-switch input{opacity:0;width:0;height:0;position:absolute}
+.toggle-slider{position:absolute;inset:0;background:var(--border2);border-radius:12px;cursor:pointer;transition:.25s}
+.toggle-slider:before{content:"";position:absolute;width:18px;height:18px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.25s}
+.toggle-switch input:checked + .toggle-slider{background:var(--green)}
+.toggle-switch input:checked + .toggle-slider:before{transform:translateX(20px)}
+
 /* 確認對話框 */
 .confirm-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:500;align-items:center;justify-content:center;padding:1rem}
 .confirm-overlay.show{display:flex}
@@ -627,8 +638,8 @@ h1,h2,h3{font-family:'Noto Serif TC',serif}
       </div>
       <div class="submit-status" id="submitStatus" style="display:none">
         <div class="submit-icon">📮</div>
-        <h3>提交成功！</h3>
-        <p>您的分享已送交管理員審核<br>通過後將自動上架，請耐心等候通知</p>
+        <h3 id="submitSuccessTitle">提交成功！</h3>
+        <p id="submitSuccessMsg">您的分享已送交管理員審核<br>通過後將自動上架，請耐心等候通知</p>
         <button class="btn btn-primary" style="margin-top:1.2rem" onclick="resetUpload()"><i class="fas fa-plus"></i>再新增一篇</button>
       </div>
     </div>
@@ -636,9 +647,18 @@ h1,h2,h3{font-family:'Noto Serif TC',serif}
 
   <!-- ADMIN -->
   <div class="page" id="page-admin">
-    <div style="margin-bottom:1.5rem">
+    <div style="margin-bottom:1.25rem">
       <h2 style="font-size:1.3rem;color:var(--gold2);margin-bottom:.3rem"><i class="fas fa-shield-halved" style="margin-right:8px"></i>管理後台</h2>
-      <p style="font-size:.83rem;color:var(--text3)">審核待上架的提示詞分享</p>
+    </div>
+    <div class="review-toggle-wrap">
+      <div>
+        <div class="label"><i class="fas fa-toggle-on" style="margin-right:6px;color:var(--gold)"></i>審核機制</div>
+        <div class="hint" id="reviewHint">開啟時：文章需經管理員審核才能上架</div>
+      </div>
+      <label class="toggle-switch">
+        <input type="checkbox" id="reviewToggle" checked onchange="setReviewMode(this.checked)">
+        <span class="toggle-slider"></span>
+      </label>
     </div>
     <div class="admin-tabs">
       <button class="admin-tab active" onclick="adminTab('pending',this)">待審核 <span id="pendingCount" style="background:var(--gold);color:#0f0e0d;font-size:10px;padding:1px 6px;border-radius:8px;margin-left:4px">0</span></button>
@@ -1114,7 +1134,7 @@ function nav(page) {
   closeMobileMenu();
   if (page === 'home')    loadPosts();
   if (page === 'rank')    loadRank();
-  if (page === 'admin')   { loadAdminPosts(); loadPendingCount(); }
+  if (page === 'admin')   { loadAdminPosts(); loadPendingCount(); loadReviewMode().then(updateReviewUI); }
   if (page === 'profile') renderProfile();
   if (page === 'my')      loadMyPosts();
 }
@@ -1519,6 +1539,50 @@ function adminTab(tab, el) {
   loadAdminPosts();
 }
 
+// ── 審核開關（全域設定，存在 DB，管理員控制，全館生效）──
+let _reviewModeCache = true; // 本地快取，避免每次送審都查 DB
+
+async function loadReviewMode() {
+  try {
+    const { data } = await db.from('settings').select('value').eq('key', 'review_mode').single();
+    _reviewModeCache = data ? data.value === 'true' : true;
+  } catch(e) {
+    _reviewModeCache = true; // 讀取失敗預設開啟審核
+  }
+  return _reviewModeCache;
+}
+
+function getReviewMode() {
+  return _reviewModeCache; // 回傳快取值（同步）
+}
+
+async function setReviewMode(enabled) {
+  // 先更新 UI，讓操作感覺即時
+  _reviewModeCache = enabled;
+  updateReviewUI();
+  // 寫入 DB
+  const { error } = await db.from('settings')
+    .upsert({ key: 'review_mode', value: String(enabled), updated_at: new Date().toISOString() });
+  if (error) {
+    toast('設定儲存失敗：' + error.message, 'error');
+    // 回滾
+    _reviewModeCache = !enabled;
+    updateReviewUI();
+    return;
+  }
+  toast(enabled ? '🔒 審核機制已開啟（全館生效）' : '🔓 審核已關閉，文章直接上架（全館生效）', enabled ? 'info' : 'success');
+}
+
+function updateReviewUI() {
+  const enabled = _reviewModeCache;
+  const toggle = document.getElementById('reviewToggle');
+  const hint   = document.getElementById('reviewHint');
+  if (toggle) toggle.checked = enabled;
+  if (hint) hint.textContent = enabled
+    ? '開啟時：文章需經管理員審核才能上架'
+    : '關閉時：任何人上傳後直接公開上架';
+}
+
 // =============================================
 // CONFIRM DIALOG
 // =============================================
@@ -1662,7 +1726,13 @@ function confirmSubmit() {
   const title  = document.getElementById('postTitle')?.value?.trim();
   const prompt = document.getElementById('promptEditor')?.innerText?.trim();
   if (!title || !prompt) { submitPost(); return; }
-  showConfirm('📤','確認送出審核？',`「${title}」將送交管理員審核。`,'確認送出','btn-primary', submitPost);
+  const reviewOn = getReviewMode();
+  showConfirm(
+    '📤',
+    reviewOn ? '確認送出審核？' : '確認上架？',
+    reviewOn ? `「${title}」將送交管理員審核，通過後才會上架。` : `「${title}」將直接公開上架。`,
+    '確認送出', 'btn-primary', submitPost
+  );
 }
 
 async function submitPost() {
@@ -1689,7 +1759,7 @@ async function submitPost() {
     user_id: currentUser.id, title, content_type: 'text',
     tags: allTags, prompt,
     result_text: document.getElementById('resultEditor')?.innerText?.trim() || null,
-    status: 'pending', sensitive_flags: flags
+    status: getReviewMode() ? 'pending' : 'approved', sensitive_flags: flags
   }).select().single();
 
   if (error || !post) {
@@ -1729,9 +1799,19 @@ async function submitPost() {
   const statusEl = document.getElementById('submitStatus');
   if (statusEl) statusEl.style.display = 'block';
   btn.style.display = 'none';
+  // 更新成功畫面文字
+  const titleEl = document.getElementById('submitSuccessTitle');
+  const msgEl   = document.getElementById('submitSuccessMsg');
+  if (!getReviewMode()) {
+    if (titleEl) titleEl.textContent = '上架成功！';
+    if (msgEl)   msgEl.innerHTML = '您的分享已公開上架<br>其他館員現在可以看到您的提示詞';
+  } else {
+    if (titleEl) titleEl.textContent = '提交成功！';
+    if (msgEl)   msgEl.innerHTML = '您的分享已送交管理員審核<br>通過後將自動上架，請耐心等候通知';
+  }
   // 清空暫存資料
   uploadTags = []; pendingImages = []; pendingFiles = [];
-  toast('已送出，等待審核 ✓', 'success');
+  toast(getReviewMode() ? '已送出，等待審核 ✓' : '已上架 ✓', 'success');
   loadPendingCount();
 }
 
@@ -2250,6 +2330,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   await initAuth();
   loadPosts();
   renderAiLinks();
+  loadReviewMode(); // 載入審核設定快取（背景執行）
 });
 
 </script>
