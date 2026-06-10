@@ -329,6 +329,12 @@ h1,h2,h3{font-family:'Noto Serif TC',serif}
 .lightbox-counter{color:rgba(255,255,255,.6);font-size:13px;margin-top:12px}
 .lightbox-prev:disabled,.lightbox-next:disabled{opacity:.2;cursor:default}
 
+/* 敏感詞管理 */
+.keyword-list{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:.8rem;min-height:32px;padding:6px 8px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius)}
+.keyword-chip{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;background:rgba(231,76,60,.1);border:1px solid rgba(231,76,60,.25);border-radius:100px;font-size:12px;color:#e74c3c}
+.keyword-chip button{background:none;border:none;cursor:pointer;color:#e74c3c;font-size:14px;line-height:1;padding:0 1px;opacity:.7}
+.keyword-chip button:hover{opacity:1}
+
 /* 審核開關 */
 .review-toggle-wrap{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:1.25rem}
 .review-toggle-wrap .label{flex:1;font-size:.88rem;color:var(--text2)}
@@ -660,6 +666,24 @@ h1,h2,h3{font-family:'Noto Serif TC',serif}
         <span class="toggle-slider"></span>
       </label>
     </div>
+    <!-- 敏感詞管理 -->
+    <details style="margin-bottom:1.25rem;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius2)">
+      <summary style="padding:.9rem 1.1rem;cursor:pointer;font-size:.9rem;font-weight:600;color:var(--text2);list-style:none;display:flex;align-items:center;gap:8px">
+        <i class="fas fa-triangle-exclamation" style="color:#e74c3c"></i>敏感詞管理
+        <span style="margin-left:auto;font-size:.78rem;font-weight:400;color:var(--text3)" id="kwCount"></span>
+        <i class="fas fa-chevron-down" style="font-size:11px;transition:.2s"></i>
+      </summary>
+      <div style="padding:0 1.1rem 1.1rem">
+        <p style="font-size:.8rem;color:var(--text3);margin-bottom:.8rem">文章含有以下詞彙時，將自動拒絕刊登</p>
+        <div class="keyword-list" id="keywordList"></div>
+        <div style="display:flex;gap:8px">
+          <input type="text" class="form-input" id="newKeyword" placeholder="輸入新詞彙後按 Enter 或點新增" style="flex:1;font-size:13px"
+            onkeydown="if(event.key==='Enter')addKeyword()">
+          <button class="btn btn-danger btn-sm" onclick="addKeyword()"><i class="fas fa-plus"></i>新增</button>
+        </div>
+      </div>
+    </details>
+
     <div class="admin-tabs">
       <button class="admin-tab active" onclick="adminTab('pending',this)">待審核 <span id="pendingCount" style="background:var(--gold);color:#0f0e0d;font-size:10px;padding:1px 6px;border-radius:8px;margin-left:4px">0</span></button>
       <button class="admin-tab" onclick="adminTab('approved',this)">已上架</button>
@@ -873,7 +897,61 @@ h1,h2,h3{font-family:'Noto Serif TC',serif}
 // =============================================
 const SUPABASE_URL = 'https://oqennxszrjjcwoulovse.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_82JqqtVTZxofUT5xMPuPYw_NCsr9ozg';
-const SENSITIVE_WORDS = ['色情','裸露','情色','暴力','殺人','自殺','毒品','賭博','詐騙','歧視','仇恨','恐怖'];
+// 敏感詞從 DB 載入，這裡是預設備用清單
+const DEFAULT_SENSITIVE_WORDS = ['色情','裸露','情色','暴力','殺人','自殺','毒品','賭博','詐騙','歧視','仇恨','恐怖'];
+let SENSITIVE_WORDS = [...DEFAULT_SENSITIVE_WORDS];
+
+async function loadSensitiveWords() {
+  try {
+    const { data } = await db.from('settings').select('value').eq('key', 'sensitive_words').single();
+    if (data?.value) {
+      SENSITIVE_WORDS = JSON.parse(data.value);
+    }
+  } catch(e) { /* 讀取失敗用預設清單 */ }
+  renderKeywordList();
+  const ct = document.getElementById('kwCount');
+  if (ct) ct.textContent = `共 ${SENSITIVE_WORDS.length} 個`;
+}
+
+async function saveSensitiveWords() {
+  const { error } = await db.from('settings')
+    .upsert({ key: 'sensitive_words', value: JSON.stringify(SENSITIVE_WORDS), updated_at: new Date().toISOString() });
+  if (error) { toast('儲存失敗：' + error.message, 'error'); return false; }
+  const ct = document.getElementById('kwCount');
+  if (ct) ct.textContent = `共 ${SENSITIVE_WORDS.length} 個`;
+  return true;
+}
+
+function renderKeywordList() {
+  const el = document.getElementById('keywordList');
+  if (!el) return;
+  if (!SENSITIVE_WORDS.length) { el.innerHTML = '<span style="font-size:.8rem;color:var(--text3)">尚無敏感詞</span>'; return; }
+  el.innerHTML = SENSITIVE_WORDS.map((w, i) => `
+    <span class="keyword-chip">
+      ${w}
+      <button onclick="removeKeyword(${i})" title="刪除">×</button>
+    </span>`).join('');
+}
+
+async function addKeyword() {
+  const inp = document.getElementById('newKeyword');
+  const val = inp?.value?.trim();
+  if (!val) { toast('請輸入詞彙', 'error'); return; }
+  if (SENSITIVE_WORDS.includes(val)) { toast('此詞彙已存在', 'info'); return; }
+  SENSITIVE_WORDS.push(val);
+  renderKeywordList();
+  inp.value = '';
+  if (await saveSensitiveWords()) toast(`已新增「${val}」`, 'success');
+  else SENSITIVE_WORDS.pop(); // 儲存失敗回滾
+}
+
+async function removeKeyword(idx) {
+  const removed = SENSITIVE_WORDS[idx];
+  SENSITIVE_WORDS.splice(idx, 1);
+  renderKeywordList();
+  if (await saveSensitiveWords()) toast(`已移除「${removed}」`, 'info');
+  else { SENSITIVE_WORDS.splice(idx, 0, removed); renderKeywordList(); } // 回滾
+}
 
 // =============================================
 // SUPABASE CLIENT
@@ -1134,7 +1212,7 @@ function nav(page) {
   closeMobileMenu();
   if (page === 'home')    loadPosts();
   if (page === 'rank')    loadRank();
-  if (page === 'admin')   { loadAdminPosts(); loadPendingCount(); loadReviewMode().then(updateReviewUI); }
+  if (page === 'admin')   { loadAdminPosts(); loadPendingCount(); loadReviewMode().then(updateReviewUI); loadSensitiveWords(); }
   if (page === 'profile') renderProfile();
   if (page === 'my')      loadMyPosts();
 }
@@ -2330,7 +2408,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   await initAuth();
   loadPosts();
   renderAiLinks();
-  loadReviewMode(); // 載入審核設定快取（背景執行）
+  loadReviewMode();    // 載入審核設定快取（背景執行）
+  loadSensitiveWords(); // 載入敏感詞清單
 });
 
 </script>
